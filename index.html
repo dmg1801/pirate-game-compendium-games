@@ -1,0 +1,2887 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>La Isla del Cocotero</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Duelo pirata por turnos: dos barcos se cañonean por encima de una isla con un cocotero y un tesoro.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Pirata+One&display=swap">
+<style>
+/* Escenario a pantalla completa con marcador de madera y latón sobre el canvas.
+   Mundo visual único (atardecer en el Caribe): un solo tema, colores fijos. */
+:root {
+  --sea-deep: #0c2639;
+  --wood: #2b1a0f;
+  --wood-2: #45291a;
+  --brass: #d6a23f;
+  --brass-hi: #f4d07d;
+  --paper: #f2e3c2;
+  --paper-2: #e3cb9b;
+  --ink: #2a1c11;
+  --red: #d2493b;
+  --bone: #eadfc4;
+  --hp-good: #6cbf5c;
+  --hp-mid: #e3b33d;
+  --hp-low: #d9483a;
+  --f-display: "Pirata One", "Luminari", "Papyrus", Georgia, serif;
+  --f-body: "Alegreya Sans", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 50% 30%, #17405e 0%, var(--sea-deep) 70%);
+  background-color: var(--sea-deep);
+  color: var(--paper);
+  font-family: var(--f-body);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#app {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-block: 8px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  touch-action: none;
+}
+#stage {
+  --u: 1;
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  border-radius: calc(12px * var(--u));
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(214, 162, 63, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.rotate-note { display: none; margin: 0; font-size: 14px; color: var(--paper-2); text-align: center; }
+@media (orientation: portrait) and (max-width: 720px) { .rotate-note { display: block; } }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--brass-hi); outline-offset: 2px; }
+
+/* ---------- marcador ---------- */
+.hud { position: absolute; inset: 0; pointer-events: none; font-size: max(11px, calc(17px * var(--u))); }
+.hud button, .hud .log, .hud .panel { pointer-events: auto; }
+.hud-top {
+  position: absolute; top: 2.2%; left: 2%; right: 2%;
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.2em; align-items: start;
+}
+.cap {
+  display: grid; gap: 0.3em; padding: 0.45em 0.7em 0.55em;
+  background: linear-gradient(180deg, rgba(43, 26, 15, 0.82), rgba(43, 26, 15, 0.68));
+  border: 2px solid rgba(214, 162, 63, 0.55); border-radius: 0.5em;
+  max-width: 21em; transition: box-shadow 0.25s, border-color 0.25s;
+}
+.cap-right { justify-self: end; text-align: right; }
+.cap.is-attacker { border-color: var(--brass-hi); box-shadow: 0 0 0 2px rgba(244, 208, 125, 0.35), 0 0 18px rgba(244, 208, 125, 0.35); }
+.cap-row { display: flex; gap: 0.5em; align-items: baseline; justify-content: space-between; }
+.cap-right .cap-row { flex-direction: row-reverse; }
+.cap-name { font-family: var(--f-display); font-size: 1.35em; line-height: 1; letter-spacing: 0.02em; }
+#cap0 .cap-name { color: #ff8b78; }
+#cap1 .cap-name { color: var(--bone); }
+.cap-tag { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.08em; color: var(--paper-2); white-space: nowrap; }
+.hp { position: relative; height: 1.15em; width: 15em; max-width: 100%; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(214, 162, 63, 0.6); border-radius: 0.6em; overflow: hidden; }
+.cap-right .hp { justify-self: end; }
+.hp-fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--hp-good); transition: width 0.5s cubic-bezier(.2,.9,.3,1), background-color 0.3s; }
+.cap-right .hp-fill { inset: 0 0 0 auto; }
+.hp-fill.flash { animation: hpflash 0.5s; }
+@keyframes hpflash { 0%, 60% { filter: brightness(2.2); } 100% { filter: none; } }
+.hp-num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 0.78em; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+.chip { justify-self: start; font-size: 0.75em; padding: 0.15em 0.6em; border-radius: 1em; background: var(--brass); color: var(--ink); font-weight: 700; }
+.cap-right .chip { justify-self: end; }
+
+.turnbox { display: grid; justify-items: center; gap: 0.35em; padding: 0.4em 0.9em 0.5em; background: rgba(43, 26, 15, 0.72); border: 2px solid rgba(214, 162, 63, 0.45); border-radius: 0.5em; }
+.turn-n { font-family: var(--f-display); font-size: 1.3em; line-height: 1; color: var(--brass-hi); }
+.wind { display: flex; align-items: center; gap: 0.4em; font-size: 0.85em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wind svg { width: 2.6em; height: 1em; transition: transform 0.4s; }
+.tools { display: flex; gap: 0.35em; }
+.icon-btn { width: 2.1em; height: 2.1em; min-width: 30px; min-height: 30px; display: grid; place-items: center; padding: 0; border-radius: 0.4em; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(214, 162, 63, 0.5); }
+.icon-btn:hover { background: rgba(214, 162, 63, 0.25); }
+.icon-btn svg { width: 60%; height: 60%; fill: none; stroke: var(--paper); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- aviso de turno ---------- */
+.banner { position: absolute; left: 50%; top: 31%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: bannerIn 0.45s cubic-bezier(.2,1.4,.4,1); }
+.banner-t { font-family: var(--f-display); font-size: 3.4em; line-height: 1; color: var(--brass-hi); text-shadow: 0 3px 0 #3a210f, 0 0 20px rgba(0, 0, 0, 0.6); }
+.banner-s { margin-top: 0.15em; font-family: var(--f-display); font-size: 1.7em; color: var(--paper); text-shadow: 0 2px 0 #3a210f, 0 0 12px rgba(0, 0, 0, 0.7); }
+.banner-w { display: inline-block; margin-top: 0.45em; padding: 0.15em 0.8em; border-radius: 1em; background: rgba(43, 26, 15, 0.7); font-size: 1em; color: var(--paper); }
+@keyframes bannerIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); } }
+
+/* ---------- panel de decisión ---------- */
+.panel {
+  position: absolute; left: 50%; bottom: 2.5%; transform: translateX(-50%);
+  width: min(46em, 94%); box-sizing: border-box; padding: 0.6em 0.9em 0.7em;
+  background: linear-gradient(180deg, rgba(69, 41, 26, 0.95), rgba(43, 26, 15, 0.95));
+  border: 2px solid var(--brass); border-radius: 0.6em;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  display: grid; gap: 0.45em;
+}
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
+#panelWho { font-family: var(--f-display); font-size: 1.35em; line-height: 1; }
+.panel-role { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brass-hi); }
+.panel-msg { margin: 0; font-size: 0.95em; color: var(--paper); line-height: 1.3; }
+.panel-msg.nudge { animation: nudge 0.4s; color: var(--brass-hi); }
+@keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.panel-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em; }
+.moves { display: flex; gap: 0.3em; }
+.mv { min-height: 34px; padding: 0.35em 0.75em; border-radius: 0.4em; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(214, 162, 63, 0.55); white-space: nowrap; }
+.mv:hover:not(:disabled) { background: rgba(214, 162, 63, 0.2); }
+.mv[aria-pressed="true"] { background: var(--brass); color: var(--ink); font-weight: 700; border-color: var(--brass-hi); }
+.mv:disabled { opacity: 0.3; cursor: not-allowed; }
+.aimread { flex: 1; min-width: 8em; font-size: 0.9em; font-variant-numeric: tabular-nums; color: var(--paper-2); text-align: center; }
+.aimread b { color: var(--paper); }
+.go { min-height: 36px; padding: 0.3em 1.1em; border-radius: 0.45em; background: linear-gradient(180deg, #d9573f, #a8362a); border: 2px solid var(--brass-hi); font-family: var(--f-display); font-size: 1.3em; letter-spacing: 0.03em; color: #fff7e6; text-shadow: 0 1px 0 #5a1810; }
+.go:hover { filter: brightness(1.1); }
+.go.is-calm { background: linear-gradient(180deg, #3f7f9a, #285a72); }
+.panel-last { margin: 0; font-size: 0.78em; color: var(--paper-2); opacity: 0.85; }
+.panel-last:empty { display: none; }
+
+/* ---------- bitácora ---------- */
+.log {
+  touch-action: pan-y;
+  position: absolute; right: 2%; top: 20%; width: min(22em, 60%); max-height: 52%; overflow: auto;
+  padding: 0.6em 0.9em; box-sizing: border-box;
+  background: var(--paper); color: var(--ink); border: 2px solid var(--brass); border-radius: 0.5em;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.log h3 { margin: 0 0 0.3em; font-family: var(--f-display); font-weight: 400; font-size: 1.4em; }
+.log ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45em; font-size: 0.85em; line-height: 1.3; }
+.log li { border-top: 1px solid rgba(42, 28, 17, 0.2); padding-top: 0.4em; }
+.log li b { font-variant-numeric: tabular-nums; }
+.log .empty { opacity: 0.6; }
+
+/* ---------- pantallas superpuestas ---------- */
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(8, 22, 34, 0.55); font-size: max(12px, calc(17px * var(--u))); padding: 2%; box-sizing: border-box; }
+.overlay.is-clear { background: rgba(8, 22, 34, 0.25); }
+.card {
+  touch-action: pan-y;
+  position: relative; width: min(30em, 100%); max-height: 100%; overflow: auto; box-sizing: border-box;
+  padding: 1.1em 1.4em 1.3em; color: var(--ink);
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(150, 100, 40, 0.18), transparent 60%),
+    var(--paper);
+  border-radius: 0.5em; border: 2px solid #9c7a43;
+  box-shadow: 0 0 0 4px rgba(43, 26, 15, 0.6), 0 16px 40px rgba(0, 0, 0, 0.5);
+  display: grid; gap: 0.8em; text-align: center;
+}
+.card h1, .card h2 { margin: 0; font-family: var(--f-display); font-weight: 400; line-height: 0.95; text-wrap: balance; }
+.card h1 { font-size: 3.1em; color: #7a2a1c; }
+.card h2 { font-size: 2.1em; color: #7a2a1c; }
+.card p { margin: 0; line-height: 1.4; }
+.sub { font-size: 1.05em; color: #5c4630; margin-top: -0.3em; }
+.menu-block { display: grid; gap: 0.5em; padding: 0.7em; border: 1px dashed rgba(42, 28, 17, 0.35); border-radius: 0.5em; }
+.label { font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.12em; color: #6b5236; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3em; }
+.seg button { min-height: 34px; padding: 0.35em 0.4em; border-radius: 0.4em; background: rgba(42, 28, 17, 0.08); border: 1px solid rgba(42, 28, 17, 0.35); color: var(--ink); }
+.seg button[aria-checked="true"] { background: var(--wood-2); color: var(--paper); border-color: var(--wood); font-weight: 700; }
+.level-note { font-size: 0.85em; color: #5c4630; min-height: 2.6em; }
+.btn { min-height: 40px; padding: 0.5em 1em; border-radius: 0.45em; border: 2px solid var(--wood-2); background: rgba(42, 28, 17, 0.08); color: var(--ink); font-weight: 700; font-size: 1em; }
+.btn:hover { background: rgba(42, 28, 17, 0.16); }
+.btn.primary { background: linear-gradient(180deg, #c9493a, #96301f); color: #fff7e6; border-color: #6e2316; font-family: var(--f-display); font-weight: 400; font-size: 1.35em; letter-spacing: 0.03em; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; border-color: transparent; text-decoration: underline; text-underline-offset: 3px; font-weight: 400; }
+.row { display: flex; gap: 0.6em; justify-content: center; flex-wrap: wrap; }
+.row .btn { flex: 1; min-width: 8em; }
+.card-help { width: min(40em, 100%); text-align: left; }
+.card-help h2 { text-align: center; }
+.card-help ul { margin: 0; padding-left: 1.2em; display: grid; gap: 0.35em; line-height: 1.35; }
+.card-help h3 { margin: 0.2em 0 0; font-family: var(--f-display); font-weight: 400; font-size: 1.3em; color: #7a2a1c; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 0.25em 0.8em; font-size: 0.92em; }
+kbd { font-family: inherit; font-size: 0.85em; padding: 0.05em 0.4em; border-radius: 0.25em; border: 1px solid rgba(42, 28, 17, 0.45); background: rgba(255, 255, 255, 0.5); white-space: nowrap; }
+.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.95em; }
+.stats th, .stats td { padding: 0.3em 0.4em; border-bottom: 1px solid rgba(42, 28, 17, 0.2); }
+.stats th { font-family: var(--f-display); font-weight: 400; font-size: 1.15em; }
+.stats td:first-child { text-align: left; color: #5c4630; }
+.trophy { font-family: var(--f-display); color: #9a6a12; font-size: 1.1em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .banner, .hp-fill, .panel-msg.nudge { animation: none; transition: none; }
+}
+
+/* ---------- escenario pequeño (móvil en horizontal) ---------- */
+.is-compact .panel { bottom: 1.5%; padding: 0.35em 0.5em; gap: 0; width: min(46em, 97%); }
+.is-compact .panel-head, .is-compact .panel-msg, .is-compact .panel-last { display: none; }
+.is-compact .panel-msg.nudge { display: block; font-size: 0.85em; }
+.is-compact .mv { min-height: 30px; padding: 0.2em 0.55em; }
+.is-compact .go { min-height: 30px; font-size: 1.15em; }
+.is-compact .hud-top { top: 1.5%; gap: 0.6em; }
+.is-compact .cap { padding: 0.3em 0.5em 0.35em; gap: 0.2em; }
+.is-compact .cap-tag { display: none; }
+.is-compact .turnbox { padding: 0.25em 0.6em 0.35em; gap: 0.2em; }
+.is-compact .banner { top: 34%; }
+.is-compact .card { gap: 0.5em; padding: 0.7em 1em 0.8em; }
+.is-compact .card h1 { font-size: 2.3em; }
+.is-compact .card h2 { font-size: 1.7em; }
+.is-compact .level-note { min-height: 0; }
+
+/* ---------- móvil en vertical: marcador arriba, escenario, panel abajo ---------- */
+.is-tall .overlay { position: fixed; z-index: 20; font-size: 15px; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.is-tall .hud-top {
+  position: fixed; z-index: 5; font-size: 14px;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+  grid-template-columns: 1fr 1fr; gap: 0.6em;
+}
+.is-tall #cap0 { grid-column: 1; grid-row: 1; }
+.is-tall #cap1 { grid-column: 2; grid-row: 1; }
+.is-tall .turnbox { grid-column: 1 / -1; grid-row: 2; justify-self: center; grid-auto-flow: column; align-items: center; gap: 0.8em; }
+.is-tall .hp { width: 100%; }
+.is-tall #stage .panel {
+  position: fixed; z-index: 5; font-size: 15px; transform: translateX(-50%);
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  width: min(560px, calc(100% - 32px)); padding: 0.6em 0.9em 0.7em; gap: 0.45em;
+}
+.is-tall #stage .panel-head { display: flex; }
+.is-tall #stage .panel-msg { display: block; }
+.is-tall #stage .panel-last:not(:empty) { display: block; }
+.is-tall #stage .mv, .is-tall #stage .go { min-height: 40px; }
+.is-tall .log { position: fixed; z-index: 6; font-size: 14px; top: 150px; right: 16px; width: min(22em, calc(100% - 32px)); max-height: 50vh; }
+</style>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv" aria-label="Escenario: dos barcos y una isla con un cocotero y un cofre"></canvas>
+
+    <div class="hud" id="hud" hidden>
+      <div class="hud-top">
+        <div class="cap" id="cap0">
+          <div class="cap-row"><span class="cap-name">Capitán Rojo</span><span class="cap-tag" id="tag0"></span></div>
+          <div class="hp" role="meter" aria-label="Casco del Capitán Rojo" aria-valuemin="0" aria-valuemax="100" id="hpbar0"><div class="hp-fill" id="hp0"></div><span class="hp-num" id="hpn0">100</span></div>
+          <div class="chip" id="pow0" hidden></div>
+        </div>
+        <div class="turnbox">
+          <div class="turn-n" id="turnN">Turno 1</div>
+          <div class="wind" title="Viento: empuja la bala en esa dirección">
+            <svg viewBox="0 0 52 20" id="windArrow" aria-hidden="true"><path d="M2 10 H40 M32 3 L46 10 L32 17" fill="none" stroke="#f4d07d" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="windTxt">Calma</span>
+          </div>
+          <div class="tools">
+            <button class="icon-btn" id="btnMute" aria-label="Silenciar sonido" title="Sonido (M)">
+              <svg viewBox="0 0 24 24" id="icoSound"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            </button>
+            <button class="icon-btn" id="btnLog" aria-label="Abrir bitácora" title="Bitácora (B)">
+              <svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 0 1 2 2v16H8a2 2 0 0 1-2-2z"/><path d="M6 19a2 2 0 0 1 2-2h11M10 8h6M10 12h6"/></svg>
+            </button>
+            <button class="icon-btn" id="btnPause" aria-label="Pausa" title="Pausa (Esc)">
+              <svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="cap cap-right" id="cap1">
+          <div class="cap-row"><span class="cap-name">Capitán Negro</span><span class="cap-tag" id="tag1"></span></div>
+          <div class="hp" role="meter" aria-label="Casco del Capitán Negro" aria-valuemin="0" aria-valuemax="100" id="hpbar1"><div class="hp-fill" id="hp1"></div><span class="hp-num" id="hpn1">100</span></div>
+          <div class="chip" id="pow1" hidden></div>
+        </div>
+      </div>
+
+      <div class="banner" id="banner" hidden>
+        <div class="banner-t" id="bannerT"></div>
+        <div class="banner-s" id="bannerS"></div>
+        <div class="banner-w" id="bannerW"></div>
+      </div>
+
+      <div class="panel" id="panel" hidden>
+        <div class="panel-head"><span id="panelWho"></span><span class="panel-role" id="panelRole"></span></div>
+        <p class="panel-msg" id="panelMsg"></p>
+        <div class="panel-row">
+          <div class="moves" role="group" aria-label="Maniobra">
+            <button class="mv" data-move="left" aria-pressed="false">◀ Izquierda</button>
+            <button class="mv" data-move="stay" aria-pressed="true">Quieto</button>
+            <button class="mv" data-move="right" aria-pressed="false">Derecha ▶</button>
+          </div>
+          <div class="aimread" id="aimRead" aria-live="polite"></div>
+          <button class="go" id="btnGo">¡Fuego!</button>
+        </div>
+        <p class="panel-last" id="panelLast"></p>
+      </div>
+
+      <aside class="log" id="log" hidden aria-label="Bitácora">
+        <h3>Bitácora</h3>
+        <ol id="logList"></ol>
+      </aside>
+    </div>
+
+    <div class="overlay is-clear" id="ovMenu">
+      <div class="card">
+        <h1>La Isla del Cocotero</h1>
+        <p class="sub">Duelo pirata por turnos</p>
+        <div class="menu-block">
+          <div class="label">Contra la CPU · elige rival</div>
+          <div class="seg" role="radiogroup" aria-label="Dificultad">
+            <button role="radio" data-level="easy" aria-checked="false">Grumete</button>
+            <button role="radio" data-level="normal" aria-checked="true">Corsario</button>
+            <button role="radio" data-level="hard" aria-checked="false">Almirante</button>
+          </div>
+          <p class="level-note" id="levelNote"></p>
+          <button class="btn primary" id="btnCpu">Zarpar contra la CPU</button>
+        </div>
+        <button class="btn" id="btnPvp">Dos jugadores en este dispositivo</button>
+        <button class="btn ghost" id="btnHelp">Cómo se juega</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovHandoff" hidden>
+      <div class="card">
+        <h2 id="hoTitle"></h2>
+        <p id="hoText"></p>
+        <button class="btn primary" id="btnReady">Estoy listo</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovOver" hidden>
+      <div class="card">
+        <h2 id="overTitle"></h2>
+        <p id="overSub"></p>
+        <table class="stats" id="statsTable"></table>
+        <div class="row">
+          <button class="btn primary" id="btnRematch">Revancha</button>
+          <button class="btn" id="btnToMenu">Menú</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovPause" hidden>
+      <div class="card">
+        <h2>Pausa</h2>
+        <button class="btn primary" id="btnResume">Seguir jugando</button>
+        <div class="row">
+          <button class="btn" id="btnRestart">Reiniciar partida</button>
+          <button class="btn" id="btnQuit">Salir al menú</button>
+        </div>
+        <button class="btn ghost" id="btnHelp2">Cómo se juega</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovHelp" hidden>
+      <div class="card card-help">
+        <h2>Cómo se juega</h2>
+        <ul>
+          <li>Cada turno un barco <b>ataca</b> y el otro <b>defiende</b>. En el siguiente se cambian los papeles.</li>
+          <li>El atacante elige su maniobra (izquierda, quieto o derecha) y apunta <b>arrastrando hacia atrás</b> desde cualquier punto, como un tirachinas: la dirección marca el ángulo y la distancia, la potencia.</li>
+          <li>El defensor, sin saber dónde apuntaste, elige si se mueve o se queda quieto.</li>
+          <li>Cuando los dos han decidido, los barcos navegan a la vez y después dispara el cañón.</li>
+          <li>La guía de puntos solo enseña el arranque del tiro y <b>no cuenta el viento</b>. Mira la flecha de viento, las banderas y las nubes.</li>
+          <li>Cada barco tiene 3 posiciones. Desde un extremo solo puedes ir hacia un lado, así que es más fácil adivinar dónde estarás.</li>
+        </ul>
+        <h3>Daño</h3>
+        <ul>
+          <li>Casco: 28. Centro del casco (crítico): 42. Velas atravesadas: 5. Agua cerca del casco: hasta 10.</li>
+          <li>El <b>cocotero</b> para los tiros rasos. Con 2 impactos cae.</li>
+          <li>El <b>cofre</b> da un premio: reparación +30, pólvora explosiva (×1,5) o disparo triple. Vuelve a llenarse a los 4 turnos.</li>
+        </ul>
+        <h3>Teclado</h3>
+        <div class="keys">
+          <span><kbd>←</kbd> <kbd>A</kbd> · <kbd>→</kbd> <kbd>D</kbd> · <kbd>S</kbd></span><span>Izquierda · derecha · quieto</span>
+          <span><kbd>↑</kbd> <kbd>↓</kbd> (con <kbd>Mayús</kbd> ×5)</span><span>Ángulo</span>
+          <span><kbd>Q</kbd> <kbd>E</kbd></span><span>Potencia</span>
+          <span><kbd>Intro</kbd></span><span>Confirmar</span>
+          <span><kbd>Esc</kbd> · <kbd>M</kbd> · <kbd>B</kbd></span><span>Pausa · sonido · bitácora</span>
+        </div>
+        <button class="btn primary" id="btnHelpClose">Entendido</button>
+      </div>
+    </div>
+  </div>
+  <p class="rotate-note">Gira el móvil para jugar en horizontal.</p>
+</div>
+
+<script>
+// ---- core.js ----
+/* La Isla del Cocotero — núcleo del juego.
+   Física, colisiones, reglas de turno e IA. No toca el DOM: se usa igual en el
+   navegador y en Node (tests y simulaciones). */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.IslaCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const C = {
+    W: 1280, H: 720, SEA_Y: 560, HORIZON_Y: 440,
+    GRAVITY: 600, DT: 1 / 240, BALL_R: 7, MAX_T: 9,
+    V_MIN: 260, V_MAX: 900, ANGLE_MIN: 5, ANGLE_MAX: 85,
+    // Carriles en orden de pantalla (0 = el de más a la izquierda).
+    LANES: [[120, 250, 380], [900, 1030, 1160]],
+    START_LANE: 1,
+    ISLAND: { cx: 640, half: 170, peak: 95 },
+    TREE: { x: 600, ctrl: [580, 398], top: [628, 318], trunkR: 9, crownR: 30, hp: 2, stumpH: 16 },
+    CHEST: { x: 712, halfW: 22, h: 30, cooldown: 4 },
+    HULL: { halfW: 62, top: 36, bottom: 8 },
+    RIG: { halfW: 36, top: 165 },
+    CANNON: { dx: 34, dy: 36, len: 22 },
+    DMG: {
+      hull: 28, crit: 42, critZone: 16, sail: 5, splash: 10, splashR: 85,
+      explosive: 1.5, explosiveSplashR: 1.6, triple: 0.6, tripleSpread: 3.5, repair: 30,
+    },
+    HP: 100, WIND_STEPS: 8, WIND_UNIT: 6, SELF_SAFE_T: 0.3,
+    REWARDS: ['repair', 'explosive', 'triple'],
+  };
+
+  const MOVES = ['left', 'stay', 'right'];
+
+  // ---------- utilidades ----------
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const deg = Math.PI / 180;
+
+  // Generador mulberry32. `rnd(state)` avanza la semilla guardada en el estado,
+  // así una partida es reproducible y serializable.
+  function step32(seed) {
+    let a = (seed + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return { seed: a, value: ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
+  }
+  function rnd(state) {
+    const r = step32(state.seed);
+    state.seed = r.seed;
+    return r.value;
+  }
+  function makeRng(seed) {
+    const s = { seed: (seed == null ? Math.random() * 4294967296 : seed) >>> 0 };
+    return () => rnd(s);
+  }
+  function gauss(rng) {
+    const u = Math.max(1e-9, rng()), v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function weightedPick(items, rng) {
+    const total = items.reduce((s, it) => s + it[1], 0);
+    let r = rng() * total;
+    for (const [v, w] of items) { r -= w; if (r <= 0) return v; }
+    return items[items.length - 1][0];
+  }
+
+  // ---------- geometría del escenario ----------
+  function groundY(x) {
+    const u = (x - C.ISLAND.cx) / C.ISLAND.half;
+    if (u <= -1 || u >= 1) return Infinity;
+    return C.SEA_Y - C.ISLAND.peak * Math.pow(1 - u * u, 0.8);
+  }
+  const TREE_BASE = [C.TREE.x, groundY(C.TREE.x) + 4];
+  const TRUNK = (() => {
+    const b = TREE_BASE, c = C.TREE.ctrl, t = C.TREE.top, pts = [];
+    for (let i = 0; i <= 14; i++) {
+      const s = i / 14, a = (1 - s) * (1 - s), m = 2 * (1 - s) * s, e = s * s;
+      pts.push([a * b[0] + m * c[0] + e * t[0], a * b[1] + m * c[1] + e * t[1]]);
+    }
+    return pts;
+  })();
+  const CHEST_Y = groundY(C.CHEST.x) + 2; // base del cofre
+
+  function segDist2(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const l2 = dx * dx + dy * dy;
+    let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = clamp(t, 0, 1);
+    const qx = ax + t * dx - px, qy = ay + t * dy - py;
+    return qx * qx + qy * qy;
+  }
+
+  // ---------- barcos y carriles ----------
+  const dirOf = (side) => (side === 0 ? 1 : -1);
+  const shipX = (side, lane) => C.LANES[side][lane];
+  function validMoves(lane) {
+    return MOVES.filter((m) => (m === 'left' ? lane > 0 : m === 'right' ? lane < 2 : true));
+  }
+  function laneAfter(lane, move) {
+    return clamp(lane + (move === 'left' ? -1 : move === 'right' ? 1 : 0), 0, 2);
+  }
+  function sanitizeMove(lane, move) {
+    return validMoves(lane).includes(move) ? move : 'stay';
+  }
+
+  function cannonPivot(side, x) {
+    return [x + dirOf(side) * C.CANNON.dx, C.SEA_Y - C.CANNON.dy];
+  }
+  function launch(side, x, angleDeg, power) {
+    const dir = dirOf(side);
+    const a = clamp(angleDeg, C.ANGLE_MIN, C.ANGLE_MAX) * deg;
+    const p = clamp(power, 0, 1);
+    const v = C.V_MIN + p * (C.V_MAX - C.V_MIN);
+    const [px, py] = cannonPivot(side, x);
+    const cx = Math.cos(a), cy = Math.sin(a);
+    return { x0: px + dir * cx * C.CANNON.len, y0: py - cy * C.CANNON.len, vx: dir * v * cx, vy: -v * cy };
+  }
+
+  function makeWorld(state, lanes) {
+    const l = lanes || [state.ships[0].lane, state.ships[1].lane];
+    return { shipX: [shipX(0, l[0]), shipX(1, l[1])], treeAlive: state.tree.hp > 0, wind: state.wind };
+  }
+
+  // ---------- física de la bala ----------
+  function collide(world, shooter, x, y, t) {
+    const R = C.BALL_R;
+    for (let i = 0; i < 2; i++) {
+      if (i === shooter && t < C.SELF_SAFE_T) continue;
+      const sx = world.shipX[i];
+      if (x + R > sx - C.HULL.halfW && x - R < sx + C.HULL.halfW &&
+          y + R > C.SEA_Y - C.HULL.top && y - R < C.SEA_Y + C.HULL.bottom) {
+        return { kind: 'ship', ship: i, part: Math.abs(x - sx) <= C.DMG.critZone ? 'crit' : 'hull' };
+      }
+    }
+    if (world.treeAlive) {
+      const [tx, ty] = C.TREE.top;
+      const cr = C.TREE.crownR + R;
+      if ((x - tx) * (x - tx) + (y - ty + 4) * (y - ty + 4) < cr * cr) return { kind: 'tree', part: 'crown' };
+      const tr = (C.TREE.trunkR + R) * (C.TREE.trunkR + R);
+      for (let i = 0; i < TRUNK.length - 1; i++) {
+        const a = TRUNK[i], b = TRUNK[i + 1];
+        if (segDist2(x, y, a[0], a[1], b[0], b[1]) < tr) return { kind: 'tree', part: 'trunk' };
+      }
+    } else if (Math.abs(x - C.TREE.x) < 9 + R && y + R > TREE_BASE[1] - C.TREE.stumpH && y < TREE_BASE[1]) {
+      return { kind: 'island', part: 'stump' };
+    }
+    const ch = C.CHEST;
+    if (x + R > ch.x - ch.halfW && x - R < ch.x + ch.halfW && y + R > CHEST_Y - ch.h && y - R < CHEST_Y) {
+      return { kind: 'chest' };
+    }
+    if (y + R * 0.5 >= groundY(x)) return { kind: 'island' };
+    if (y >= C.SEA_Y) return { kind: 'water' };
+    return null;
+  }
+
+  // Vuela la bala con paso fijo. Las velas no detienen la bala: la atraviesa
+  // dejando un agujero y sigue hasta el casco o el agua.
+  function simulateShot(world, shooter, shot) {
+    let x = shot.x0, y = shot.y0, vx = shot.vx, vy = shot.vy, t = 0, n = 0;
+    const points = [[x, y]], sails = [];
+    for (;;) {
+      vx += world.wind * C.DT;
+      vy += C.GRAVITY * C.DT;
+      x += vx * C.DT;
+      y += vy * C.DT;
+      t += C.DT;
+      n++;
+      if (n % 4 === 0) points.push([x, y]);
+      for (let i = 0; i < 2; i++) {
+        if (i === shooter && t < C.SELF_SAFE_T) continue;
+        if (sails.some((s) => s.ship === i)) continue;
+        const sx = world.shipX[i];
+        if (Math.abs(x - sx) < C.RIG.halfW && y > C.SEA_Y - C.RIG.top && y < C.SEA_Y - C.HULL.top) {
+          sails.push({ ship: i, x, y, t });
+        }
+      }
+      const hit = collide(world, shooter, x, y, t);
+      if (hit) {
+        points.push([x, y]);
+        hit.x = x; hit.y = y; hit.t = t;
+        return { points, sails, impact: hit };
+      }
+      if (t > C.MAX_T || x < -400 || x > C.W + 400) {
+        return { points, sails, impact: { kind: 'out', x, y, t } };
+      }
+    }
+  }
+
+  // Guía de puntería: solo gravedad, sin viento ni obstáculos, durante `dur` s.
+  function previewPath(side, x, angle, power, dur) {
+    const L = launch(side, x, angle, power);
+    const pts = [];
+    const step = 1 / 60;
+    for (let t = 0; t <= dur; t += step) {
+      const px = L.x0 + L.vx * t, py = L.y0 + L.vy * t + 0.5 * C.GRAVITY * t * t;
+      if (py > C.SEA_Y) break;
+      pts.push([px, py]);
+    }
+    return pts;
+  }
+
+  // ---------- partida ----------
+  function rollWind(state) {
+    const k = Math.floor(rnd(state) * (2 * C.WIND_STEPS + 1)) - C.WIND_STEPS;
+    return k * C.WIND_UNIT || 0; // evita -0
+  }
+  const windKnots = (wind) => Math.round(Math.abs(wind) / C.WIND_UNIT);
+
+  function createMatch(opts) {
+    opts = opts || {};
+    const seed = (opts.seed == null ? Math.random() * 4294967296 : opts.seed) >>> 0;
+    const s = {
+      turn: 1, attacker: 0, seed,
+      ships: [0, 1].map(() => ({ lane: C.START_LANE, hp: C.HP, power: null })),
+      tree: { hp: C.TREE.hp },
+      chest: { available: true, cooldown: 0 },
+      wind: 0, winner: null,
+      stats: [0, 1].map(() => ({ shots: 0, hits: 0, crits: 0, damage: 0, chests: 0 })),
+    };
+    s.attacker = opts.firstAttacker != null ? opts.firstAttacker : rnd(s) < 0.5 ? 0 : 1;
+    s.wind = rollWind(s);
+    return s;
+  }
+
+  function splashFor(world, x, radius, mult) {
+    const out = [];
+    for (let i = 0; i < 2; i++) {
+      const d = Math.max(0, Math.abs(x - world.shipX[i]) - C.HULL.halfW);
+      if (d < radius) {
+        const amount = Math.round(C.DMG.splash * mult * (1 - d / radius));
+        if (amount > 0) out.push({ ship: i, amount });
+      }
+    }
+    return out;
+  }
+
+  function damage(s, ship, amount, attacker) {
+    const real = Math.min(s.ships[ship].hp, amount);
+    s.ships[ship].hp -= real;
+    if (ship !== attacker) s.stats[attacker].damage += real;
+    return real;
+  }
+
+  function pickReward(s, side) {
+    const pool = s.ships[side].hp >= C.HP - 10 ? C.REWARDS.filter((r) => r !== 'repair') : C.REWARDS;
+    return pool[Math.floor(rnd(s) * pool.length)];
+  }
+
+  // Ejecuta un turno completo. Devuelve el nuevo estado y un `outcome` con todo
+  // lo necesario para animarlo (trayectorias y eventos con su instante).
+  function resolveTurn(state, attackPlan, defendPlan) {
+    if (state.winner != null) throw new Error('La partida ya terminó');
+    const s = clone(state);
+    const a = s.attacker, d = 1 - a;
+    const from = [s.ships[0].lane, s.ships[1].lane];
+    const moves = [];
+    moves[a] = sanitizeMove(from[a], attackPlan && attackPlan.move);
+    moves[d] = sanitizeMove(from[d], defendPlan && defendPlan.move);
+    s.ships[0].lane = laneAfter(from[0], moves[0]);
+    s.ships[1].lane = laneAfter(from[1], moves[1]);
+    const to = [s.ships[0].lane, s.ships[1].lane];
+    const world = makeWorld(s, to);
+
+    const angle = clamp(Number(attackPlan.angle) || 45, C.ANGLE_MIN, C.ANGLE_MAX);
+    const power = clamp(Number(attackPlan.power) || 0, 0, 1);
+    const used = s.ships[a].power;
+    s.ships[a].power = null;
+    const mult = used === 'explosive' ? C.DMG.explosive : used === 'triple' ? C.DMG.triple : 1;
+    const splashR = C.DMG.splashR * (used === 'explosive' ? C.DMG.explosiveSplashR : 1);
+    const angles = used === 'triple'
+      ? [angle - C.DMG.tripleSpread, angle, angle + C.DMG.tripleSpread].map((v) => clamp(v, C.ANGLE_MIN, C.ANGLE_MAX))
+      : [angle];
+
+    const shots = angles.map((ang) => {
+      const L = launch(a, world.shipX[a], ang, power);
+      const sim = simulateShot(world, a, L);
+      return { angle: ang, launch: L, points: sim.points, impact: sim.impact, sails: sim.sails };
+    });
+
+    const events = [];
+    shots.forEach((sh, k) => {
+      sh.sails.forEach((sl) => events.push({ t: sl.t, shot: k, type: 'sail', ship: sl.ship, x: sl.x, y: sl.y }));
+      events.push(Object.assign({ shot: k, type: 'impact' }, sh.impact));
+    });
+    events.sort((p, q) => p.t - q.t);
+
+    s.stats[a].shots++;
+    let hitEnemy = false, reward = null, looted = false;
+    for (const e of events) {
+      if (e.type === 'sail') {
+        e.amount = damage(s, e.ship, Math.round(C.DMG.sail * mult), a);
+      } else if (e.kind === 'ship') {
+        const base = e.part === 'crit' ? C.DMG.crit : C.DMG.hull;
+        e.amount = damage(s, e.ship, Math.round(base * mult), a);
+        if (e.ship === d) {
+          hitEnemy = true;
+          if (e.part === 'crit') s.stats[a].crits++;
+        }
+      } else if (e.kind === 'water') {
+        e.splash = splashFor(world, e.x, splashR, mult);
+        e.splash.forEach((h) => { h.amount = damage(s, h.ship, h.amount, a); });
+        e.splash = e.splash.filter((h) => h.amount > 0);
+      } else if (e.kind === 'tree') {
+        if (s.tree.hp > 0) {
+          s.tree.hp--;
+          e.felled = s.tree.hp === 0;
+        }
+        e.treeHp = s.tree.hp;
+      } else if (e.kind === 'chest') {
+        if (s.chest.available && !looted) {
+          looted = true;
+          reward = pickReward(s, a);
+          e.reward = reward;
+          s.chest.available = false;
+          s.chest.cooldown = C.CHEST.cooldown;
+          s.stats[a].chests++;
+          if (reward === 'repair') {
+            e.repair = Math.min(C.HP - s.ships[a].hp, C.DMG.repair);
+            s.ships[a].hp += e.repair;
+          } else {
+            s.ships[a].power = reward;
+          }
+        } else {
+          e.empty = true;
+        }
+      }
+      e.hpAfter = [s.ships[0].hp, s.ships[1].hp];
+    }
+    if (hitEnemy) s.stats[a].hits++;
+
+    if (s.ships[d].hp <= 0) s.winner = a;
+    else if (s.ships[a].hp <= 0) s.winner = d;
+
+    const outcome = {
+      turn: state.turn, attacker: a, defender: d, from, to, moves,
+      angle, power, powerUsed: used, wind: state.wind,
+      shots, events, reward, hitEnemy, winner: s.winner,
+    };
+
+    if (s.winner == null) {
+      s.turn++;
+      s.attacker = d;
+      s.wind = rollWind(s);
+      if (!s.chest.available && !looted) {
+        s.chest.cooldown--;
+        if (s.chest.cooldown <= 0) { s.chest.available = true; s.chest.cooldown = 0; }
+      }
+    }
+    return { state: s, outcome };
+  }
+
+  // ---------- IA ----------
+  const LEVELS = {
+    easy: { name: 'Grumete', angleSd: 6.5, powerSd: 0.075, chest: 0.04, smart: false },
+    normal: { name: 'Corsario', angleSd: 2.0, powerSd: 0.026, chest: 0.14, smart: false },
+    hard: { name: 'Almirante', angleSd: 1.0, powerSd: 0.013, chest: 0.22, smart: true },
+  };
+
+  // Memoria de lo que hace el rival (para el nivel Almirante).
+  function newMemory() {
+    return { def: { left: 1, stay: 1, right: 1 }, lastAimX: null, myLastDef: null };
+  }
+  function observe(memory, outcome, rivalSide) {
+    if (outcome.defender === rivalSide) memory.def[outcome.moves[rivalSide]] += 1;
+    if (outcome.attacker === rivalSide) {
+      const mid = outcome.shots[Math.floor(outcome.shots.length / 2)];
+      memory.lastAimX = mid.impact.x;
+    } else {
+      memory.myLastDef = outcome.moves[outcome.defender];
+    }
+  }
+
+  function scoreImpact(imp, target, me) {
+    if (imp.kind === 'ship' && imp.ship === me) return 1e4;
+    const dx = Math.abs(imp.x - target.x);
+    if (target.kind === 'chest') return imp.kind === 'chest' ? dx : 400 + dx;
+    if (imp.kind === 'ship') return dx;
+    if (imp.kind === 'water') return 120 + dx;
+    if (imp.kind === 'out') return 2000;
+    return 300 + dx;
+  }
+
+  function solveAim(world, me, target, rng) {
+    const cands = [];
+    for (let ang = 12; ang <= 80; ang += 2) {
+      for (let p = 0.04; p <= 1.0001; p += 0.024) {
+        const sim = simulateShot(world, me, launch(me, world.shipX[me], ang, p));
+        cands.push({ angle: ang, power: Math.min(1, p), score: scoreImpact(sim.impact, target, me) });
+      }
+    }
+    cands.sort((u, v) => u.score - v.score);
+    const best = cands[0].score;
+    const pool = cands.filter((c) => c.score <= best + 8).slice(0, 14);
+    return pool[Math.floor(rng() * pool.length)];
+  }
+
+  function aiPlanAttack(state, level, rng, memory) {
+    const L = LEVELS[level] || LEVELS.normal;
+    const me = state.attacker, foe = 1 - me;
+    const myLane0 = state.ships[me].lane;
+    const myMove = weightedPick(validMoves(myLane0).map((m) => {
+      const nl = laneAfter(myLane0, m);
+      return [m, nl === 1 ? 1.4 : m === 'stay' ? 1 : 0.7];
+    }), rng);
+    const myLane = laneAfter(myLane0, myMove);
+
+    const foeMoves = validMoves(state.ships[foe].lane);
+    let guess;
+    if (L.smart && memory && rng() < 0.7) guess = weightedPick(foeMoves.map((m) => [m, memory.def[m]]), rng);
+    else guess = foeMoves[Math.floor(rng() * foeMoves.length)];
+    const foeLane = laneAfter(state.ships[foe].lane, guess);
+
+    const lanes = [];
+    lanes[me] = myLane;
+    lanes[foe] = foeLane;
+    const world = makeWorld(state, lanes);
+    const lowHp = state.ships[me].hp <= 55;
+    const wantChest = state.chest.available && rng() < (lowHp ? L.chest * 2.5 : L.chest);
+    const target = wantChest ? { kind: 'chest', x: C.CHEST.x } : { kind: 'ship', x: world.shipX[foe] };
+    const aim = solveAim(world, me, target, rng);
+    return {
+      move: myMove,
+      angle: clamp(aim.angle + gauss(rng) * L.angleSd, C.ANGLE_MIN, C.ANGLE_MAX),
+      power: clamp(aim.power + gauss(rng) * L.powerSd, 0, 1),
+      intent: { guess, target: target.kind },
+    };
+  }
+
+  function aiPlanDefend(state, level, rng, memory) {
+    const L = LEVELS[level] || LEVELS.normal;
+    const me = 1 - state.attacker;
+    const lane = state.ships[me].lane;
+    const items = validMoves(lane).map((m) => {
+      let w = 1;
+      if (level !== 'easy' && memory && memory.myLastDef === m) w *= 0.6;
+      if (L.smart && memory && memory.lastAimX != null) {
+        w *= 0.6 + Math.abs(shipX(me, laneAfter(lane, m)) - memory.lastAimX) / 260;
+      }
+      return [m, w];
+    });
+    return { move: weightedPick(items, rng) };
+  }
+
+  return {
+    C, MOVES, LEVELS, TRUNK, TREE_BASE, CHEST_Y,
+    clamp, makeRng, groundY, dirOf, shipX, validMoves, laneAfter, cannonPivot, launch,
+    makeWorld, simulateShot, splashFor, previewPath, windKnots, createMatch, resolveTurn,
+    newMemory, observe, solveAim, aiPlanAttack, aiPlanDefend,
+  };
+});
+
+// ---- audio.js ----
+(function () {
+  'use strict';
+  let ctx = null, master = null, sfxBus = null, noiseBuf = null, ambience = null;
+  let music = null, musicName = null, musicPaused = false;
+  let muted = false;
+  const musicTracks = { menu: 'pirates-menu.wav', battle: 'pirates-battle.wav' };
+  const cannonAudio = new Audio('cannon-shot.wav');
+  cannonAudio.preload = 'auto';
+  const soundEffects = {
+    playerHit: new Audio('pirate-celebration.wav'),
+    enemyHit: new Audio('enemy-pirate-ship-celebration.wav'),
+    playerMove: new Audio('pirate-yelling.wav'),
+    enemyMove: new Audio('enemy-pirate-yelling.wav'),
+  };
+  Object.values(soundEffects).forEach((audio) => { audio.preload = 'auto'; });
+
+  function ensure() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = muted ? 0 : 1;
+      master.connect(ctx.destination);
+      sfxBus = ctx.createDynamicsCompressor();
+      sfxBus.threshold.value = -14;
+      sfxBus.ratio.value = 4;
+      sfxBus.connect(master);
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+
+  function playMedia(audio, label, restart, overlap) {
+    if (muted || !audio) return;
+    if (restart && overlap && !audio.paused) audio = audio.cloneNode();
+    if (restart) audio.currentTime = 0;
+    const play = audio.play();
+    if (play && play.catch) {
+      play.catch((error) => {
+        if (error.name !== 'NotAllowedError') console.error(`No se pudo reproducir ${label}.`, error);
+      });
+    }
+  }
+
+  function env(g, t0, attack, peak, decay) {
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+  }
+
+  function noise(o) {
+    if (!ensure()) return;
+    const t0 = ctx.currentTime + (o.delay || 0);
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.playbackRate.value = o.rate || 1;
+    const f = ctx.createBiquadFilter();
+    f.type = o.type || 'lowpass';
+    f.frequency.setValueAtTime(o.freq || 1000, t0);
+    if (o.freqTo) f.frequency.exponentialRampToValueAtTime(o.freqTo, t0 + (o.attack || 0.005) + o.decay);
+    f.Q.value = o.q || 0.7;
+    const g = ctx.createGain();
+    env(g, t0, o.attack || 0.005, o.gain || 0.5, o.decay);
+    src.connect(f).connect(g).connect(o.bus || sfxBus);
+    src.start(t0, Math.random() * 1.5);
+    src.stop(t0 + (o.attack || 0.005) + o.decay + 0.05);
+  }
+
+  function tone(o) {
+    if (!ensure()) return;
+    const t0 = ctx.currentTime + (o.delay || 0);
+    const osc = ctx.createOscillator();
+    osc.type = o.wave || 'sine';
+    osc.frequency.setValueAtTime(o.freq, t0);
+    if (o.freqTo) osc.frequency.exponentialRampToValueAtTime(o.freqTo, t0 + (o.attack || 0.005) + o.decay);
+    const g = ctx.createGain();
+    env(g, t0, o.attack || 0.005, o.gain || 0.3, o.decay);
+    osc.connect(g).connect(o.bus || sfxBus);
+    osc.start(t0);
+    osc.stop(t0 + (o.attack || 0.005) + o.decay + 0.05);
+  }
+
+  function startAmbience() {
+    if (!ensure() || ambience) return;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 420;
+    const g = ctx.createGain();
+    g.gain.value = 0.05;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.13;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.035;
+    lfo.connect(lfoGain).connect(g.gain);
+    src.connect(f).connect(g).connect(master);
+    src.start();
+    lfo.start();
+    ambience = { src, lfo };
+  }
+
+  const S = {
+    unlock() {
+      ensure();
+      startAmbience();
+      if (music && !musicPaused) playMedia(music, 'la música', false);
+    },
+    setMusic(name) {
+      if (!musicTracks[name]) throw new Error(`Pista de música desconocida: ${name}`);
+      if (musicName === name) {
+        if (!musicPaused) playMedia(music, 'la música', false);
+        return;
+      }
+      if (music) music.pause();
+      music = new Audio(musicTracks[name]);
+      music.loop = true;
+      music.preload = 'auto';
+      music.volume = 0.32;
+      music.muted = muted;
+      musicName = name;
+      if (!musicPaused) playMedia(music, 'la música', false);
+    },
+    setMusicPaused(paused) {
+      musicPaused = !!paused;
+      if (!music) return;
+      if (musicPaused) music.pause();
+      else playMedia(music, 'la música', false);
+    },
+    setMuted(m) {
+      muted = !!m;
+      if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.05);
+      cannonAudio.muted = muted;
+      if (music) {
+        music.muted = muted;
+        if (!muted && !musicPaused) playMedia(music, 'la música', false);
+      }
+    },
+    isMuted: () => muted,
+    shipHit(attacker) {
+      const audio = attacker === 0 ? soundEffects.playerHit : soundEffects.enemyHit;
+      playMedia(audio, 'la celebración del impacto', true, true);
+    },
+    shipMove(side) {
+      const audio = side === 0 ? soundEffects.playerMove : soundEffects.enemyMove;
+      playMedia(audio, 'el grito pirata', true, true);
+    },
+    click() { tone({ freq: 880, freqTo: 660, wave: 'triangle', gain: 0.08, decay: 0.06 }); },
+    select() { tone({ freq: 520, freqTo: 780, wave: 'triangle', gain: 0.09, decay: 0.09 }); },
+    aim() { tone({ freq: 300, freqTo: 340, wave: 'sine', gain: 0.03, decay: 0.04 }); },
+    sail() {
+      noise({ type: 'bandpass', freq: 500, freqTo: 1400, q: 0.6, attack: 0.25, gain: 0.12, decay: 0.7 });
+      tone({ freq: 140, freqTo: 110, wave: 'sawtooth', gain: 0.02, attack: 0.2, decay: 0.6 });
+    },
+    cannon() { playMedia(cannonAudio, 'el cañón', true); },
+    whistle(delay) { tone({ freq: 1500, freqTo: 600, wave: 'sine', gain: 0.025, attack: 0.3, decay: 1.2, delay }); },
+    splash(big) {
+      noise({ type: 'bandpass', freq: 1100, freqTo: 400, q: 0.5, gain: big ? 0.7 : 0.45, decay: 0.75 });
+      noise({ type: 'highpass', freq: 3500, gain: 0.18, decay: 0.4, delay: 0.05 });
+      tone({ freq: 180, freqTo: 60, gain: 0.25, decay: 0.25 });
+    },
+    crash(crit) {
+      noise({ type: 'lowpass', freq: 3200, freqTo: 300, gain: 0.95, decay: crit ? 0.9 : 0.6 });
+      tone({ freq: 120, freqTo: 40, wave: 'square', gain: 0.22, decay: 0.35 });
+      [0.04, 0.11, 0.2].forEach((dl, i) => tone({ freq: 240 - i * 40, wave: 'triangle', gain: 0.18, decay: 0.07, delay: dl }));
+      if (crit) noise({ type: 'lowpass', freq: 900, freqTo: 80, gain: 0.8, decay: 1.4, delay: 0.12 });
+    },
+    rip() { noise({ type: 'bandpass', freq: 2200, freqTo: 900, q: 1.5, gain: 0.25, decay: 0.22 }); },
+    thud() {
+      noise({ type: 'lowpass', freq: 500, freqTo: 100, gain: 0.6, decay: 0.35 });
+      tone({ freq: 80, freqTo: 45, gain: 0.4, decay: 0.25 });
+    },
+    wood() {
+      tone({ freq: 230, freqTo: 180, wave: 'triangle', gain: 0.35, decay: 0.12 });
+      tone({ freq: 160, freqTo: 120, wave: 'triangle', gain: 0.25, decay: 0.15, delay: 0.09 });
+      noise({ type: 'bandpass', freq: 1500, gain: 0.15, decay: 0.15 });
+    },
+    timber() {
+      [0, 0.12, 0.26, 0.42].forEach((dl, i) => tone({ freq: 200 - i * 25, wave: 'triangle', gain: 0.3, decay: 0.1, delay: dl }));
+      noise({ type: 'lowpass', freq: 700, freqTo: 120, gain: 0.7, decay: 0.6, delay: 0.75 });
+    },
+    coins() {
+      for (let i = 0; i < 9; i++) {
+        tone({ freq: 1300 + Math.random() * 1300, wave: 'triangle', gain: 0.07, decay: 0.12, delay: i * 0.055 });
+      }
+    },
+    powerup() {
+      [523, 659, 784, 1047].forEach((f, i) => tone({ freq: f, wave: 'triangle', gain: 0.12, decay: 0.16, delay: i * 0.08 }));
+    },
+    turn() {
+      tone({ freq: 392, wave: 'triangle', gain: 0.08, decay: 0.15 });
+      tone({ freq: 523, wave: 'triangle', gain: 0.08, decay: 0.25, delay: 0.12 });
+    },
+    sink() {
+      noise({ type: 'lowpass', freq: 600, freqTo: 60, gain: 0.6, attack: 0.3, decay: 2.5 });
+      for (let i = 0; i < 10; i++) tone({ freq: 300 + Math.random() * 500, freqTo: 900, gain: 0.04, decay: 0.08, delay: 0.4 + i * 0.18 });
+    },
+    fanfare() {
+      const notes = [392, 523, 659, 784, 659, 784, 1047];
+      const durs = [0.15, 0.15, 0.15, 0.3, 0.15, 0.15, 0.6];
+      let t = 0;
+      notes.forEach((f, i) => {
+        tone({ freq: f, wave: 'triangle', gain: 0.13, decay: durs[i] + 0.1, delay: t });
+        tone({ freq: f / 2, wave: 'sine', gain: 0.08, decay: durs[i] + 0.1, delay: t });
+        t += durs[i];
+      });
+    },
+    lament() {
+      [392, 370, 349, 262].forEach((f, i) => tone({ freq: f, wave: 'triangle', gain: 0.12, decay: 0.4, delay: i * 0.32 }));
+    },
+  };
+  window.IslaAudio = S;
+})();
+
+// ---- render.js ----
+/* Dibujo procedural del escenario con Canvas 2D. Todo el arte sale de aquí. */
+(function () {
+  'use strict';
+  const Core = window.IslaCore;
+  const C = Core.C;
+  const TAU = Math.PI * 2;
+
+  const PALETTE = [
+    { hull: '#6e4124', hullDark: '#4a2914', trim: '#e2b44f', sail: '#f2e6c8', sailShade: '#d8c79f', stripe: '#b5342a', flag: '#c23b2e', emblem: '#b5342a' },
+    { hull: '#3a2a22', hullDark: '#22170f', trim: '#c9a24a', sail: '#2d2a30', sailShade: '#1d1b20', stripe: '#46424a', flag: '#141215', emblem: '#eadfc4' },
+  ];
+
+  const R = {};
+  let clouds = [], gulls = [], farShip = null, sparkle = [];
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  R.init = function () {
+    clouds = [];
+    for (let i = 0; i < 7; i++) {
+      clouds.push({ x: rand(-100, C.W + 100), y: rand(50, 250), s: rand(0.6, 1.25), base: rand(4, 10), seed: Math.random() * 100 });
+    }
+    gulls = [];
+    for (let i = 0; i < 3; i++) gulls.push({ x: rand(0, C.W), y: rand(90, 220), v: rand(18, 34), ph: Math.random() * TAU, s: rand(0.7, 1.1) });
+    farShip = { x: rand(200, 1000), v: 6 };
+    sparkle = [];
+    for (let i = 0; i < 40; i++) sparkle.push({ x: rand(780, 1240), y: rand(C.HORIZON_Y + 4, C.SEA_Y - 10), ph: Math.random() * TAU });
+  };
+
+  R.update = function (dt, wind) {
+    for (const c of clouds) {
+      c.x += (c.base + wind * 0.35) * dt * c.s;
+      if (c.x > C.W + 180) c.x = -180;
+      if (c.x < -180) c.x = C.W + 180;
+    }
+    for (const g of gulls) {
+      g.x += g.v * dt;
+      g.ph += dt * 6;
+      if (g.x > C.W + 40) { g.x = -40; g.y = rand(90, 220); }
+    }
+    farShip.x += farShip.v * dt;
+    if (farShip.x > C.W + 60) farShip.x = -60;
+  };
+
+  R.waveY = function (x, t) {
+    return C.SEA_Y + 3.2 * Math.sin(x * 0.018 + t * 1.4) + 1.8 * Math.sin(x * 0.051 - t * 2.1);
+  };
+  R.waveSlope = function (x, t) {
+    return (R.waveY(x + 30, t) - R.waveY(x - 30, t)) / 60;
+  };
+
+  // ---------- cielo y fondo ----------
+  function drawCloud(ctx, x, y, s) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.fillStyle = 'rgba(255,250,240,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 60, 22, 0, 0, TAU);
+    ctx.ellipse(-30, -10, 32, 24, 0, 0, TAU);
+    ctx.ellipse(18, -18, 36, 28, 0, 0, TAU);
+    ctx.ellipse(48, -2, 28, 18, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(206,196,190,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(6, 10, 62, 9, 0, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  R.drawBackground = function (ctx, t) {
+    const sky = ctx.createLinearGradient(0, 0, 0, C.HORIZON_Y);
+    sky.addColorStop(0, '#2c6aa3');
+    sky.addColorStop(0.55, '#79b3d6');
+    sky.addColorStop(1, '#f3d6a2');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, C.W, C.HORIZON_Y + 2);
+
+    // sol
+    const sx = 1015, sy = 170;
+    const glow = ctx.createRadialGradient(sx, sy, 20, sx, sy, 230);
+    glow.addColorStop(0, 'rgba(255,240,190,0.85)');
+    glow.addColorStop(0.3, 'rgba(255,220,150,0.35)');
+    glow.addColorStop(1, 'rgba(255,220,150,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(sx - 240, sy - 240, 480, 480);
+    ctx.fillStyle = '#fff4cf';
+    ctx.beginPath();
+    ctx.arc(sx, sy, 40, 0, TAU);
+    ctx.fill();
+
+    for (const c of clouds) drawCloud(ctx, c.x, c.y, c.s);
+
+    // gaviotas
+    ctx.strokeStyle = 'rgba(40,40,50,0.75)';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    for (const g of gulls) {
+      const f = Math.sin(g.ph) * 5 * g.s;
+      ctx.beginPath();
+      ctx.moveTo(g.x - 11 * g.s, g.y - f);
+      ctx.quadraticCurveTo(g.x - 5 * g.s, g.y - 6 * g.s, g.x, g.y);
+      ctx.quadraticCurveTo(g.x + 5 * g.s, g.y - 6 * g.s, g.x + 11 * g.s, g.y - f);
+      ctx.stroke();
+    }
+
+    // mar lejano
+    const far = ctx.createLinearGradient(0, C.HORIZON_Y, 0, C.SEA_Y);
+    far.addColorStop(0, '#5c9cbd');
+    far.addColorStop(1, '#2b6b93');
+    ctx.fillStyle = far;
+    ctx.fillRect(0, C.HORIZON_Y, C.W, C.SEA_Y - C.HORIZON_Y + 20);
+
+    // islas lejanas
+    ctx.fillStyle = '#6b8fa6';
+    ctx.beginPath();
+    ctx.moveTo(60, C.HORIZON_Y + 1);
+    ctx.quadraticCurveTo(140, C.HORIZON_Y - 34, 230, C.HORIZON_Y - 8);
+    ctx.quadraticCurveTo(270, C.HORIZON_Y - 18, 320, C.HORIZON_Y + 1);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(1120, C.HORIZON_Y + 1);
+    ctx.quadraticCurveTo(1180, C.HORIZON_Y - 22, 1250, C.HORIZON_Y + 1);
+    ctx.fill();
+
+    // barco lejano
+    const fx = farShip.x, fy = C.HORIZON_Y + 3;
+    ctx.fillStyle = 'rgba(60,80,100,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(fx - 14, fy - 4);
+    ctx.lineTo(fx + 14, fy - 4);
+    ctx.lineTo(fx + 10, fy);
+    ctx.lineTo(fx - 10, fy);
+    ctx.fill();
+    ctx.fillRect(fx - 1, fy - 22, 2, 18);
+    ctx.beginPath();
+    ctx.moveTo(fx + 1, fy - 21);
+    ctx.lineTo(fx + 10, fy - 8);
+    ctx.lineTo(fx + 1, fy - 7);
+    ctx.fill();
+
+    // destellos del sol en el agua
+    for (const s of sparkle) {
+      const a = 0.5 + 0.5 * Math.sin(t * 2.2 + s.ph);
+      ctx.fillStyle = `rgba(255,240,200,${0.55 * a * a})`;
+      ctx.fillRect(s.x, s.y, 10 + 8 * a, 1.5);
+    }
+    // líneas de oleaje lejanas
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1.5;
+    for (let row = 0; row < 5; row++) {
+      const y = C.HORIZON_Y + 18 + row * 22;
+      ctx.beginPath();
+      for (let x = 0; x <= C.W; x += 20) {
+        const yy = y + Math.sin(x * 0.03 + t * (0.6 + row * 0.15) + row) * (1 + row * 0.5);
+        if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.setLineDash([18, 40 + row * 6]);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  };
+
+  // ---------- isla ----------
+  R.drawIsland = function (ctx, t, view) {
+    const { cx, half } = C.ISLAND;
+    // sombra en el agua
+    ctx.fillStyle = 'rgba(20,60,80,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, C.SEA_Y + 6, half + 26, 14, 0, 0, TAU);
+    ctx.fill();
+
+    const sand = ctx.createLinearGradient(0, C.SEA_Y - C.ISLAND.peak, 0, C.SEA_Y + 10);
+    sand.addColorStop(0, '#f3dca3');
+    sand.addColorStop(0.7, '#e2bf7c');
+    sand.addColorStop(1, '#b8915a');
+    ctx.fillStyle = sand;
+    ctx.beginPath();
+    ctx.moveTo(cx - half - 16, C.SEA_Y + 12);
+    for (let x = cx - half; x <= cx + half; x += 4) ctx.lineTo(x, Core.groundY(x));
+    ctx.lineTo(cx + half + 16, C.SEA_Y + 12);
+    ctx.closePath();
+    ctx.fill();
+
+    // arena mojada
+    ctx.fillStyle = 'rgba(150,110,60,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, C.SEA_Y + 2, half + 6, 12, 0, Math.PI, TAU);
+    ctx.fill();
+
+    // rocas
+    ctx.fillStyle = '#8b8378';
+    ctx.beginPath();
+    ctx.ellipse(cx - 128, C.SEA_Y - 8, 16, 10, -0.2, 0, TAU);
+    ctx.ellipse(cx + 140, C.SEA_Y - 6, 12, 8, 0.3, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#a69d90';
+    ctx.beginPath();
+    ctx.ellipse(cx - 132, C.SEA_Y - 11, 8, 4, -0.2, 0, TAU);
+    ctx.fill();
+
+    // matas de hierba
+    ctx.strokeStyle = '#4f8a3a';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    const tufts = [560, 585, 660, 676, 740, 760];
+    for (const tx of tufts) {
+      const gy = Core.groundY(tx) + 2;
+      for (let k = -2; k <= 2; k++) {
+        const sway = Math.sin(t * 2 + tx) * 1.5 + view.wind * 0.04;
+        ctx.beginPath();
+        ctx.moveTo(tx + k * 2, gy);
+        ctx.quadraticCurveTo(tx + k * 3 + sway, gy - 7, tx + k * 4 + sway * 1.6, gy - 12 + Math.abs(k) * 2);
+        ctx.stroke();
+      }
+    }
+
+    // huellas de impactos en la arena
+    for (const c of view.craters) {
+      ctx.fillStyle = 'rgba(110,80,40,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(c.x, Core.groundY(c.x) + 3, 12, 4, 0, 0, TAU);
+      ctx.fill();
+    }
+  };
+
+  // ---------- cocotero ----------
+  function drawFrond(ctx, x, y, ang, len, droop, t, k) {
+    const sway = Math.sin(t * 1.7 + k) * 0.06;
+    const a = ang + sway;
+    const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len + droop;
+    const mx = x + Math.cos(a) * len * 0.5, my = y + Math.sin(a) * len * 0.5 - 14;
+    // hoja
+    ctx.fillStyle = k % 2 ? '#2f8a3c' : '#3a9a45';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    const nx = -Math.sin(a), ny = Math.cos(a);
+    ctx.quadraticCurveTo(mx + nx * 12, my + ny * 12, ex, ey);
+    ctx.quadraticCurveTo(mx - nx * 6, my - ny * 6 + 6, x, y);
+    ctx.fill();
+    ctx.strokeStyle = '#1f6a2c';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(mx, my, ex, ey);
+    ctx.stroke();
+    // foliolos
+    ctx.strokeStyle = k % 2 ? '#2f8a3c' : '#3a9a45';
+    ctx.lineWidth = 2;
+    for (let i = 2; i < 9; i++) {
+      const s = i / 9;
+      const px = (1 - s) * (1 - s) * x + 2 * (1 - s) * s * mx + s * s * ex;
+      const py = (1 - s) * (1 - s) * y + 2 * (1 - s) * s * my + s * s * ey;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + nx * 10 * (1 - s) + Math.cos(a) * 5, py + ny * 10 * (1 - s) + 8);
+      ctx.stroke();
+    }
+  }
+
+  R.drawTree = function (ctx, t, tree, wind) {
+    const pts = Core.TRUNK;
+    const base = Core.TREE_BASE;
+    if (tree.hp <= 0 && tree.fall >= 1) {
+      drawFallenTree(ctx, t);
+      return;
+    }
+    ctx.save();
+    if (tree.hp <= 0) {
+      // caída animada alrededor de la base
+      const e = tree.fall * tree.fall;
+      ctx.translate(base[0], base[1]);
+      ctx.rotate(e * 1.32);
+      ctx.translate(-base[0], -base[1]);
+    }
+    const shake = tree.shake > 0 ? Math.sin(t * 60) * tree.shake * 6 : 0;
+    const swayTop = Math.sin(t * 1.2) * 2.5 + wind * 0.05 + shake;
+    // tronco por segmentos
+    for (let i = 0; i < pts.length - 1; i++) {
+      const s0 = i / (pts.length - 1), s1 = (i + 1) / (pts.length - 1);
+      const ax = pts[i][0] + swayTop * s0 * s0, ay = pts[i][1];
+      const bx = pts[i + 1][0] + swayTop * s1 * s1, by = pts[i + 1][1];
+      ctx.strokeStyle = i % 2 ? '#8a5c34' : '#7a4e2a';
+      ctx.lineWidth = 19 - s0 * 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+    // anillos del tronco
+    ctx.strokeStyle = 'rgba(60,35,15,0.5)';
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const s = i / (pts.length - 1);
+      const x = pts[i][0] + swayTop * s * s, y = pts[i][1];
+      const w = (19 - s * 8) / 2;
+      ctx.beginPath();
+      ctx.moveTo(x - w, y + 1);
+      ctx.quadraticCurveTo(x, y + 4, x + w, y + 1);
+      ctx.stroke();
+    }
+    const [tx0, ty] = C.TREE.top;
+    const tx = tx0 + swayTop;
+    // cocos
+    if (tree.hp > 1) {
+      ctx.fillStyle = '#5b3b1d';
+      [[-7, 8], [6, 9], [0, 13]].forEach(([dx, dy]) => {
+        ctx.beginPath();
+        ctx.arc(tx + dx, ty + dy, 6, 0, TAU);
+        ctx.fill();
+      });
+    }
+    const fronds = [
+      [-2.9, 78, 26], [-2.4, 70, 10], [-1.95, 56, 0], [-1.25, 56, 0],
+      [-0.75, 70, 10], [-0.25, 78, 26], [0.25, 66, 34], [2.85, 66, 34],
+    ];
+    fronds.forEach(([a, l, d], k) => drawFrond(ctx, tx, ty, a + wind * 0.002, l * (tree.hp > 1 ? 1 : 0.85), d, t, k));
+    ctx.restore();
+  };
+
+  function drawFallenTree(ctx, t) {
+    const base = Core.TREE_BASE;
+    // tocón
+    ctx.fillStyle = '#7a4e2a';
+    ctx.beginPath();
+    ctx.moveTo(base[0] - 10, base[1]);
+    ctx.lineTo(base[0] - 8, base[1] - C.TREE.stumpH);
+    ctx.lineTo(base[0] - 2, base[1] - C.TREE.stumpH + 4);
+    ctx.lineTo(base[0] + 3, base[1] - C.TREE.stumpH - 1);
+    ctx.lineTo(base[0] + 9, base[1] - C.TREE.stumpH + 3);
+    ctx.lineTo(base[0] + 10, base[1]);
+    ctx.fill();
+    ctx.fillStyle = '#d9b27a';
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1] - C.TREE.stumpH + 2, 8, 3, 0, 0, TAU);
+    ctx.fill();
+    // tronco tumbado
+    ctx.save();
+    ctx.translate(base[0] + 14, base[1] - 6);
+    ctx.rotate(0.2);
+    for (let i = 0; i < 9; i++) {
+      ctx.fillStyle = i % 2 ? '#8a5c34' : '#7a4e2a';
+      ctx.fillRect(i * 17, -7 + i * 0.3, 18, 14 - i * 0.6);
+    }
+    ctx.restore();
+    const ex = base[0] + 170, ey = base[1] + 26;
+    [[-2.6, 50, 14], [-1.6, 40, 8], [-0.4, 50, 18], [0.6, 46, 26]].forEach(([a, l, d], k) => drawFrond(ctx, ex, ey, a, l, d, t * 0.2, k));
+  }
+
+  // ---------- cofre ----------
+  R.drawChest = function (ctx, t, chest) {
+    const x = C.CHEST.x, y = Core.CHEST_Y, w = C.CHEST.halfW, h = C.CHEST.h;
+    ctx.save();
+    ctx.translate(x, y);
+    const bounce = chest.pop > 0 ? -Math.sin(chest.pop * Math.PI) * 6 : 0;
+    ctx.translate(0, bounce);
+    // caja
+    ctx.fillStyle = '#7b4a22';
+    ctx.fillRect(-w, -h * 0.62, w * 2, h * 0.62);
+    ctx.fillStyle = '#5e3518';
+    ctx.fillRect(-w, -h * 0.62, w * 2, 3);
+    ctx.fillStyle = '#d8a93e';
+    ctx.fillRect(-w + 6, -h * 0.62, 4, h * 0.62);
+    ctx.fillRect(w - 10, -h * 0.62, 4, h * 0.62);
+    if (chest.available) {
+      // tapa cerrada
+      ctx.fillStyle = '#8a5428';
+      ctx.beginPath();
+      ctx.moveTo(-w - 2, -h * 0.6);
+      ctx.lineTo(-w - 2, -h * 0.82);
+      ctx.quadraticCurveTo(0, -h * 1.18, w + 2, -h * 0.82);
+      ctx.lineTo(w + 2, -h * 0.6);
+      ctx.fill();
+      ctx.fillStyle = '#d8a93e';
+      ctx.fillRect(-w + 6, -h * 0.98, 4, h * 0.38);
+      ctx.fillRect(w - 10, -h * 0.98, 4, h * 0.38);
+      ctx.fillStyle = '#f2d36b';
+      ctx.fillRect(-4, -h * 0.72, 8, 9);
+      ctx.fillStyle = '#4a2a10';
+      ctx.fillRect(-1, -h * 0.68, 2, 4);
+      // destellos
+      for (let i = 0; i < 3; i++) {
+        const ph = (t * 0.8 + i * 0.33) % 1;
+        if (ph < 0.25) {
+          const a = Math.sin((ph / 0.25) * Math.PI);
+          const sx = [-14, 12, 2][i], sy = [-36, -32, -44][i];
+          ctx.strokeStyle = `rgba(255,240,170,${a})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(sx - 5 * a, sy);
+          ctx.lineTo(sx + 5 * a, sy);
+          ctx.moveTo(sx, sy - 5 * a);
+          ctx.lineTo(sx, sy + 5 * a);
+          ctx.stroke();
+        }
+      }
+    } else {
+      // abierto y vacío
+      ctx.fillStyle = '#2a170a';
+      ctx.fillRect(-w + 2, -h * 0.62 - 2, w * 2 - 4, 5);
+      ctx.fillStyle = '#8a5428';
+      ctx.beginPath();
+      ctx.moveTo(-w - 2, -h * 0.62);
+      ctx.lineTo(-w - 8, -h * 1.25);
+      ctx.quadraticCurveTo(-w + 4, -h * 1.45, -w + 6, -h * 1.2);
+      ctx.lineTo(-w + 2, -h * 0.62);
+      ctx.fill();
+      // indicador de recarga
+      ctx.fillStyle = 'rgba(30,20,10,0.55)';
+      for (let i = 0; i < C.CHEST.cooldown; i++) {
+        ctx.beginPath();
+        ctx.arc(-9 + i * 6, 9, 2.2, 0, TAU);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#f2d36b';
+      for (let i = 0; i < C.CHEST.cooldown - chest.cooldown; i++) {
+        ctx.beginPath();
+        ctx.arc(-9 + i * 6, 9, 2.2, 0, TAU);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  };
+
+  // ---------- barcos ----------
+  function drawSkull(ctx, x, y, s, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, 7 * s, 0, TAU);
+    ctx.fill();
+    ctx.fillRect(x - 4 * s, y + 3 * s, 8 * s, 6 * s);
+    ctx.lineWidth = 2.4 * s;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x - 11 * s, y + 6 * s); ctx.lineTo(x + 11 * s, y + 16 * s);
+    ctx.moveTo(x + 11 * s, y + 6 * s); ctx.lineTo(x - 11 * s, y + 16 * s);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.beginPath();
+    ctx.arc(x - 2.6 * s, y - 0.5 * s, 1.9 * s, 0, TAU);
+    ctx.arc(x + 2.6 * s, y - 0.5 * s, 1.9 * s, 0, TAU);
+    ctx.fill();
+  }
+
+  // `ship`: {side, x, y, rot, hp, cannon, recoil, holes, ghost, sinking}
+  R.drawShip = function (ctx, ship, t, wind) {
+    const P = PALETTE[ship.side];
+    const dir = Core.dirOf(ship.side);
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.rotate(ship.rot);
+    if (ship.ghost) ctx.globalAlpha = 0.33;
+    ctx.scale(dir, 1);
+    const dmg = 1 - ship.hp / C.HP;
+
+    // mástil
+    ctx.fillStyle = '#5a3a1e';
+    ctx.fillRect(-4, -168, 7, 140);
+    ctx.fillRect(-40, -150, 80, 4);
+    ctx.fillRect(-34, -100, 68, 4);
+    // cofa
+    ctx.fillRect(-9, -128, 18, 5);
+
+    // vela mayor con panza al viento
+    const belly = 10 + Math.abs(wind) * 0.12;
+    const bellyDir = (wind >= 0 ? 1 : -1) * dir;
+    ctx.fillStyle = P.sail;
+    ctx.beginPath();
+    ctx.moveTo(-36, -146);
+    ctx.quadraticCurveTo(bellyDir * belly, -125, 36, -146);
+    ctx.lineTo(40, -60);
+    ctx.quadraticCurveTo(bellyDir * belly * 1.4, -48, -40, -60);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = P.sailShade;
+    ctx.beginPath();
+    ctx.moveTo(-40, -60);
+    ctx.quadraticCurveTo(bellyDir * belly * 1.4, -48, 40, -60);
+    ctx.lineTo(39, -70);
+    ctx.quadraticCurveTo(bellyDir * belly * 1.3, -58, -39, -70);
+    ctx.fill();
+    // emblema
+    if (ship.side === 0) {
+      ctx.fillStyle = P.stripe;
+      ctx.fillRect(-38, -128, 76, 9);
+      ctx.fillRect(-39, -96, 78, 9);
+      ctx.beginPath();
+      ctx.moveTo(-6, -118); ctx.lineTo(6, -118); ctx.lineTo(0, -104); ctx.fill();
+    } else {
+      drawSkull(ctx, bellyDir * 3, -112, 1.25, P.emblem);
+    }
+    // agujeros de las velas
+    for (const h of ship.holes) {
+      ctx.fillStyle = 'rgba(30,20,15,0.85)';
+      ctx.beginPath();
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * TAU, r = h.r * (0.7 + ((i * 37) % 10) / 22);
+        const px = h.x + Math.cos(a) * r, py = h.y + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // foque
+    ctx.fillStyle = P.sail;
+    ctx.beginPath();
+    ctx.moveTo(4, -160);
+    ctx.quadraticCurveTo(40 + bellyDir * 6, -100, 74, -42);
+    ctx.lineTo(10, -44);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,10,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(4, -166); ctx.lineTo(78, -42);
+    ctx.moveTo(-2, -166); ctx.lineTo(-60, -44);
+    ctx.stroke();
+
+    // bandera: ondea hacia donde sopla el viento
+    const fl = (wind >= 0 ? 1 : -1) * dir;
+    const flap = Math.sin(t * 9) * 3;
+    ctx.fillStyle = P.flag;
+    ctx.beginPath();
+    ctx.moveTo(0, -168);
+    ctx.quadraticCurveTo(fl * 14, -172 + flap, fl * 30, -166 + flap * 0.6);
+    ctx.lineTo(fl * 30, -152 + flap * 0.6);
+    ctx.quadraticCurveTo(fl * 14, -158 + flap, 0, -154);
+    ctx.fill();
+    if (ship.side === 1) drawSkull(ctx, fl * 15, -163 + flap * 0.5, 0.42, '#eadfc4');
+
+    // cañón de cubierta
+    const ang = (ship.cannon || 30) * Math.PI / 180;
+    ctx.save();
+    ctx.translate(C.CANNON.dx, -C.CANNON.dy);
+    ctx.rotate(-ang);
+    ctx.fillStyle = '#26262b';
+    const rc = ship.recoil || 0;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(-8 - rc, -5, C.CANNON.len + 8, 10, 4) : ctx.rect(-8 - rc, -5, C.CANNON.len + 8, 10);
+    ctx.fill();
+    ctx.fillStyle = '#3d3d44';
+    ctx.fillRect(C.CANNON.len - 4 - rc, -6, 5, 12);
+    ctx.restore();
+    ctx.fillStyle = '#5a3a1e';
+    ctx.fillRect(C.CANNON.dx - 9, -C.CANNON.dy - 1, 18, 7);
+
+    // casco
+    ctx.fillStyle = P.hull;
+    ctx.beginPath();
+    ctx.moveTo(-66, -50);
+    ctx.lineTo(-34, -50);
+    ctx.lineTo(-32, -34);
+    ctx.lineTo(50, -34);
+    ctx.lineTo(74, -44);
+    ctx.quadraticCurveTo(66, -10, 42, 8);
+    ctx.lineTo(-48, 8);
+    ctx.quadraticCurveTo(-64, -16, -66, -50);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = P.hullDark;
+    ctx.beginPath();
+    ctx.moveTo(-58, -6);
+    ctx.lineTo(62, -6);
+    ctx.quadraticCurveTo(56, 2, 42, 8);
+    ctx.lineTo(-48, 8);
+    ctx.quadraticCurveTo(-54, 2, -58, -6);
+    ctx.fill();
+    // tablas
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = 1;
+    for (const yy of [-26, -18]) {
+      ctx.beginPath();
+      ctx.moveTo(-62, yy);
+      ctx.lineTo(66, yy);
+      ctx.stroke();
+    }
+    // moldura dorada y portas
+    ctx.fillStyle = P.trim;
+    ctx.fillRect(-64, -36, 132, 3);
+    ctx.fillRect(-66, -52, 34, 3);
+    ctx.fillStyle = '#17110c';
+    for (const px of [-30, -6, 18, 42]) ctx.fillRect(px, -15, 9, 7);
+    // farol de popa
+    ctx.fillStyle = `rgba(255,200,90,${0.7 + 0.3 * Math.sin(t * 5 + ship.side)})`;
+    ctx.fillRect(-64, -60, 5, 8);
+
+    // daños: tablones rotos
+    if (dmg > 0.25) {
+      ctx.fillStyle = '#1b120b';
+      ctx.beginPath();
+      ctx.moveTo(-20, -28); ctx.lineTo(-8, -31); ctx.lineTo(-4, -22); ctx.lineTo(-16, -19); ctx.fill();
+    }
+    if (dmg > 0.55) {
+      ctx.beginPath();
+      ctx.moveTo(24, -26); ctx.lineTo(38, -29); ctx.lineTo(36, -16); ctx.lineTo(26, -18); ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  // marcas de carriles para quien está decidiendo
+  R.drawLanes = function (ctx, t, side, currentLane, selectedLane, color) {
+    for (let i = 0; i < 3; i++) {
+      const x = Core.shipX(side, i);
+      const y = R.waveY(x, t) + 22;
+      const sel = i === selectedLane;
+      ctx.fillStyle = sel ? color : 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(x, y, sel ? 30 : 16, sel ? 5 : 3, 0, 0, TAU);
+      ctx.fill();
+      if (i === currentLane && !sel) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(x, y, 22, 4, 0, 0, TAU);
+        ctx.stroke();
+      }
+    }
+  };
+
+  R.drawWaterFront = function (ctx, t) {
+    const body = ctx.createLinearGradient(0, C.SEA_Y - 6, 0, C.H);
+    body.addColorStop(0, 'rgba(38,108,150,0.94)');
+    body.addColorStop(0.4, 'rgba(24,78,118,0.98)');
+    body.addColorStop(1, '#0f3150');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(0, C.H);
+    for (let x = 0; x <= C.W; x += 10) ctx.lineTo(x, R.waveY(x, t) + 2);
+    ctx.lineTo(C.W, C.H);
+    ctx.closePath();
+    ctx.fill();
+    // cresta
+    ctx.strokeStyle = 'rgba(220,240,250,0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x <= C.W; x += 10) {
+      const y = R.waveY(x, t) + 2;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // espuma en la orilla de la isla
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    const { cx, half } = C.ISLAND;
+    for (const side of [-1, 1]) {
+      const fx = cx + side * (half - 4 + Math.sin(t * 1.3) * 6);
+      ctx.beginPath();
+      ctx.ellipse(fx, R.waveY(fx, t) + 3, 22, 3.5, 0, 0, TAU);
+      ctx.fill();
+    }
+    // reflejos y vetas
+    ctx.strokeStyle = 'rgba(160,210,235,0.18)';
+    ctx.lineWidth = 2;
+    for (let row = 0; row < 6; row++) {
+      const y = C.SEA_Y + 30 + row * 24;
+      ctx.beginPath();
+      for (let x = 0; x <= C.W; x += 16) {
+        const yy = y + Math.sin(x * 0.02 + t * (1 + row * 0.2) + row * 2) * 3;
+        if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.setLineDash([30 + row * 4, 50 + row * 10]);
+      ctx.lineDashOffset = -t * (14 + row * 3);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  };
+
+  R.drawBall = function (ctx, x, y) {
+    ctx.fillStyle = '#18181c';
+    ctx.beginPath();
+    ctx.arc(x, y, C.BALL_R, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.arc(x - 2.2, y - 2.2, 2.2, 0, TAU);
+    ctx.fill();
+    if (y < -8) {
+      // indicador de bala por encima de la pantalla
+      const h = Math.round(-y);
+      ctx.fillStyle = 'rgba(20,20,25,0.75)';
+      ctx.beginPath();
+      ctx.moveTo(x, 6); ctx.lineTo(x - 8, 20); ctx.lineTo(x + 8, 20); ctx.fill();
+      ctx.font = '600 13px "Alegreya Sans", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(h + ' m', x, 36);
+    }
+  };
+
+  // guía de puntería: banda elástica, arco corto y lectura de ángulo/potencia
+  R.drawAim = function (ctx, t, side, shipXpos, aim, color) {
+    const piv = Core.cannonPivot(side, shipXpos);
+    const dir = Core.dirOf(side);
+    const a = aim.angle * Math.PI / 180;
+    const pull = 30 + aim.power * 90;
+    // banda
+    ctx.strokeStyle = 'rgba(70,40,15,0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(piv[0], piv[1]);
+    ctx.lineTo(piv[0] - dir * Math.cos(a) * pull, piv[1] + Math.sin(a) * pull);
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(piv[0] - dir * Math.cos(a) * pull, piv[1] + Math.sin(a) * pull, 7, 0, TAU);
+    ctx.fill();
+    // arco previo
+    const pts = Core.previewPath(side, shipXpos, aim.angle, aim.power, 0.55);
+    for (let i = 2; i < pts.length; i += 3) {
+      const f = 1 - i / pts.length;
+      ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.65 * f})`;
+      ctx.beginPath();
+      ctx.arc(pts[i][0], pts[i][1], 2.2 + 1.8 * f, 0, TAU);
+      ctx.fill();
+    }
+    // arco de potencia
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.arc(piv[0], piv[1], 46, -Math.PI * 0.95, -Math.PI * 0.05);
+    ctx.stroke();
+    const hue = 120 - aim.power * 120;
+    ctx.strokeStyle = `hsl(${hue},75%,50%)`;
+    ctx.beginPath();
+    ctx.arc(piv[0], piv[1], 46, -Math.PI * 0.95, -Math.PI * 0.95 + Math.PI * 0.9 * aim.power);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  };
+
+  // ---------- partículas ----------
+  R.drawParticles = function (ctx, parts) {
+    for (const p of parts) {
+      const k = p.life / p.max;
+      if (p.kind === 'smoke') {
+        ctx.fillStyle = `rgba(${p.c},${0.45 * k})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (1.8 - k), 0, TAU);
+        ctx.fill();
+      } else if (p.kind === 'fire') {
+        ctx.fillStyle = `rgba(255,${Math.floor(120 + 120 * k)},40,${k})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * k + 1, 0, TAU);
+        ctx.fill();
+      } else if (p.kind === 'drop') {
+        ctx.fillStyle = `rgba(225,243,252,${0.9 * Math.min(1, k * 2)})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, TAU);
+        ctx.fill();
+      } else if (p.kind === 'debris' || p.kind === 'leaf' || p.kind === 'cloth') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.min(1, k * 2);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.size, -p.size * 0.35, p.size * 2, p.size * 0.7);
+        ctx.restore();
+      } else if (p.kind === 'coin') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(Math.abs(Math.cos(p.rot)), 1);
+        ctx.globalAlpha = Math.min(1, k * 2);
+        ctx.fillStyle = '#f4c542';
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#c8921e';
+        ctx.fillRect(-1, -p.size * 0.6, 2, p.size * 1.2);
+        ctx.restore();
+      } else if (p.kind === 'sand') {
+        ctx.fillStyle = `rgba(226,196,135,${k})`;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      } else if (p.kind === 'ring') {
+        ctx.strokeStyle = `rgba(255,255,255,${0.6 * k})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.size * (1.6 - k) * 2, p.size * (1.6 - k) * 0.5, 0, 0, TAU);
+        ctx.stroke();
+      } else if (p.kind === 'flash') {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+        g.addColorStop(0, `rgba(255,250,220,${k})`);
+        g.addColorStop(0.4, `rgba(255,190,80,${0.8 * k})`);
+        g.addColorStop(1, 'rgba(255,120,40,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, TAU);
+        ctx.fill();
+      }
+    }
+  };
+
+  R.drawTexts = function (ctx, texts) {
+    ctx.textAlign = 'center';
+    for (const tx of texts) {
+      const k = tx.life / tx.max;
+      const rise = (1 - k) * 46;
+      const pop = k > 0.85 ? 1 + (k - 0.85) * 3 : 1;
+      ctx.save();
+      ctx.translate(tx.x, tx.y - rise);
+      ctx.scale(pop, pop);
+      ctx.globalAlpha = Math.min(1, k * 3);
+      ctx.font = `${tx.size || 30}px "Pirata One", "Luminari", Georgia, serif`;
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = 'rgba(25,15,8,0.85)';
+      ctx.strokeText(tx.text, 0, 0);
+      ctx.fillStyle = tx.color;
+      ctx.fillText(tx.text, 0, 0);
+      ctx.restore();
+    }
+  };
+
+  window.IslaRender = R;
+})();
+
+// ---- game.js ----
+/* Controlador: fases del turno, entrada, efectos, marcador y pantallas. */
+(function () {
+  'use strict';
+  const Core = window.IslaCore, C = Core.C, R = window.IslaRender, S = window.IslaAudio;
+  const $ = (id) => document.getElementById(id);
+
+  const NAMES = ['Capitán Rojo', 'Capitán Negro'];
+  const ACCENT = ['#ff8b78', '#eadfc4'];
+  const REWARD_TXT = { repair: 'Reparación +30', explosive: 'Pólvora explosiva', triple: 'Disparo triple' };
+  const POWER_TXT = { explosive: 'Pólvora explosiva', triple: 'Disparo triple' };
+  const LEVEL_NOTE = {
+    easy: 'Grumete: dispara a ojo y falla a menudo. Para aprender.',
+    normal: 'Corsario: buen artillero. Un duelo equilibrado.',
+    hard: 'Almirante: casi no falla con el viento y aprende hacia dónde sueles esquivar.',
+  };
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('isla.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('isla.' + k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } },
+  };
+
+  const G = {
+    mode: 'demo', level: store.get('level', 'normal'), cpu: [true, true], attract: true,
+    state: null, phase: 'idle', speed: 1, paused: false,
+    plan: { attack: null, defend: null },
+    ui: { move: 'stay', aim: null, controller: -1, drag: null, lastTick: 0 },
+    lastAim: [null, null], outcome: null, exec: null, rng: Core.makeRng(), mem: null,
+    log: [], nextFirst: null, firstOfMatch: 0, timers: [], scale: 1, overlay: 'ovMenu', helpFrom: null,
+  };
+  const V = { t: 0, ships: [], tree: null, chest: null, parts: [], texts: [], craters: [], shake: 0, flash: 0, wind: 0 };
+
+  const cv = $('cv');
+  const ctx = cv.getContext('2d');
+
+  function sfx(name, a) { if (!G.attract && S[name]) S[name](a); }
+  function after(sec, fn) { G.timers.push({ t: sec, fn }); }
+  const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+  const rand = (a, b) => a + Math.random() * (b - a);
+  function levelFor(side) { return G.mode === 'demo' ? (side === 0 ? 'normal' : 'hard') : G.level; }
+  function isHuman(side) { return !G.cpu[side]; }
+  function windText(w) {
+    const k = Core.windKnots(w);
+    if (!k) return 'Calma';
+    return `${k} ${k === 1 ? 'nudo' : 'nudos'} ${w > 0 ? '→' : '←'}`;
+  }
+
+  // ---------- partida ----------
+  function resetView() {
+    V.ships = [0, 1].map((i) => ({
+      side: i, x: Core.shipX(i, G.state.ships[i].lane), y: C.SEA_Y, rot: 0, hp: C.HP,
+      cannon: 30, cannonRest: 30, recoil: 0, holes: [], tilt: 0, tiltV: 0, sinkT: 0, sinking: false, smokeT: 0,
+    }));
+    V.tree = { hp: C.TREE.hp, fall: 0, shake: 0 };
+    V.chest = { available: true, cooldown: 0, pop: 0 };
+    V.parts = [];
+    V.texts = [];
+    V.craters = [];
+    V.shake = 0;
+    V.flash = 0;
+    V.wind = G.state.wind;
+  }
+
+  function newMatch(mode, opts) {
+    opts = opts || {};
+    S.setMusic(mode === 'demo' ? 'menu' : 'battle');
+    S.setMusicPaused(false);
+    G.timers = [];
+    G.mode = mode;
+    G.attract = mode === 'demo' && !opts.watch;
+    G.cpu = mode === 'pvp' ? [false, false] : mode === 'cpu' ? [false, true] : [true, true];
+    G.state = Core.createMatch(G.nextFirst == null ? {} : { firstAttacker: G.nextFirst });
+    G.nextFirst = null;
+    G.firstOfMatch = G.state.attacker;
+    G.mem = [Core.newMemory(), Core.newMemory()];
+    G.lastAim = [null, null];
+    G.log = [];
+    G.speed = opts.speed || 1;
+    G.paused = false;
+    renderLog();
+    resetView();
+    $('hud').hidden = G.attract;
+    $('log').hidden = true;
+    $('panelLast').textContent = '';
+    updateHud();
+    startTurn();
+  }
+
+  function setPhase(p) { G.phase = p; }
+
+  function startTurn() {
+    const s = G.state;
+    G.plan = { attack: null, defend: null };
+    G.ui.move = 'stay';
+    G.ui.aim = null;
+    G.ui.controller = -1;
+    G.ui.drag = null;
+    V.wind = s.wind;
+    updateHud();
+    setPhase('intro');
+    showBanner(`Turno ${s.turn}`, `Ataca el ${NAMES[s.attacker]}`, `Viento: ${windText(s.wind)}`);
+    sfx('turn');
+    after(G.attract ? 0.9 : 1.45, () => { hideBanner(); beginAttack(); });
+  }
+
+  function beginAttack() {
+    const a = G.state.attacker;
+    if (G.cpu[a]) {
+      G.plan.attack = Core.aiPlanAttack(G.state, levelFor(a), G.rng, G.mem[a]);
+      beginDefend();
+    } else if (G.mode === 'pvp') {
+      handoff(a, 'attack', () => plan('attack', a));
+    } else {
+      plan('attack', a);
+    }
+  }
+
+  function beginDefend() {
+    const d = 1 - G.state.attacker;
+    if (G.cpu[d]) {
+      G.plan.defend = Core.aiPlanDefend(G.state, levelFor(d), G.rng, G.mem[d]);
+      if (G.cpu[1 - d]) { setPhase('cpuThink'); after(0.5, execute); } else execute();
+    } else if (G.mode === 'pvp') {
+      handoff(d, 'defend', () => plan('defend', d));
+    } else {
+      plan('defend', d);
+    }
+  }
+
+  function plan(role, side) {
+    setPhase(role === 'attack' ? 'planAttack' : 'planDefend');
+    G.ui.controller = side;
+    G.ui.move = 'stay';
+    G.ui.aim = role === 'attack' && G.lastAim[side] ? Object.assign({}, G.lastAim[side]) : null;
+    showPanel(role, side);
+  }
+
+  function confirmPlan() {
+    if (G.phase === 'planAttack') {
+      if (!G.ui.aim) {
+        const m = $('panelMsg');
+        m.textContent = 'Primero apunta: arrastra hacia atrás desde cualquier punto del mar o del cielo.';
+        m.classList.remove('nudge');
+        void m.offsetWidth;
+        m.classList.add('nudge');
+        S.click();
+        return;
+      }
+      S.select();
+      G.plan.attack = { move: G.ui.move, angle: G.ui.aim.angle, power: G.ui.aim.power };
+      hidePanel();
+      beginDefend();
+    } else if (G.phase === 'planDefend') {
+      S.select();
+      G.plan.defend = { move: G.ui.move };
+      hidePanel();
+      execute();
+    }
+  }
+
+  function execute() {
+    const res = Core.resolveTurn(G.state, G.plan.attack, G.plan.defend);
+    const o = res.outcome;
+    G.state = res.state;
+    G.outcome = o;
+    for (let i = 0; i < 2; i++) if (G.cpu[i]) Core.observe(G.mem[i], o, 1 - i);
+    if (isHuman(o.attacker)) G.lastAim[o.attacker] = { angle: o.angle, power: o.power };
+    G.exec = {
+      t: 0, fired: false, shotT: 0, balls: [], done: new Set(), endAt: null,
+      fromX: [0, 1].map((i) => Core.shipX(i, o.from[i])),
+      toX: [0, 1].map((i) => Core.shipX(i, o.to[i])),
+      cannonFrom: V.ships[o.attacker].cannonRest,
+    };
+    G.ui.controller = -1;
+    for (let side = 0; side < 2; side++) {
+      if (o.moves[side] !== 'stay') sfx('shipMove', side);
+    }
+    setPhase('execMove');
+  }
+
+  function fire() {
+    const o = G.outcome, a = o.attacker, sh = V.ships[a];
+    G.exec.fired = true;
+    sh.recoil = 9;
+    sh.tiltV += -Core.dirOf(a) * 0.5;
+    sh.cannonRest = o.angle;
+    const mid = o.shots[Math.floor(o.shots.length / 2)].launch;
+    const dir = Core.dirOf(a);
+    emit('flash', mid.x0, mid.y0, 1, { size: 60, life: 0.18 });
+    for (let i = 0; i < 14; i++) {
+      emit('smoke', mid.x0, mid.y0, 1, { vx: mid.vx * rand(0.05, 0.18) + rand(-20, 20), vy: mid.vy * rand(0.05, 0.18) + rand(-25, 5), size: rand(8, 15), life: rand(0.9, 1.7), c: '235,230,220', drag: 1.6, g: -12 });
+    }
+    for (let i = 0; i < 8; i++) emit('fire', mid.x0, mid.y0, 1, { vx: dir * rand(60, 220), vy: rand(-140, 20), size: rand(2, 4), life: rand(0.15, 0.35) });
+    V.shake = Math.max(V.shake, 5);
+    sfx('cannon');
+    sfx('whistle', 0.4);
+    if (o.powerUsed) floatText(sh.x, C.SEA_Y - 190, POWER_TXT[o.powerUsed] + '!', '#f4d07d', 26);
+    G.exec.balls = o.shots.map((s, k) => ({ k, points: s.points, done: false, x: s.launch.x0, y: s.launch.y0, trail: 0 }));
+    setPhase('execShot');
+  }
+
+  function finishTurn() {
+    const o = G.outcome;
+    addLog(o);
+    $('panelLast').textContent = 'Último turno: ' + describe(o).result;
+    updateHud();
+    if (o.winner != null) {
+      setPhase('sinking');
+      const loser = 1 - o.winner;
+      V.ships[loser].sinking = true;
+      sfx('sink');
+      floatText(V.ships[loser].x, C.SEA_Y - 120, '¡A pique!', '#ffb199', 40);
+      after(3, showGameOver);
+    } else {
+      startTurn();
+    }
+  }
+
+  // ---------- efectos ----------
+  function emit(kind, x, y, n, o) {
+    o = o || {};
+    for (let i = 0; i < n; i++) {
+      if (V.parts.length > 900) V.parts.shift();
+      const life = o.life || 1;
+      V.parts.push({
+        kind, x, y, vx: o.vx || 0, vy: o.vy || 0, g: o.g || 0, drag: o.drag || 0,
+        size: o.size || 3, life, max: life, c: o.c, rot: o.rot || rand(0, 6.28), vr: o.vr || 0,
+      });
+    }
+  }
+  function floatText(x, y, text, color, size) {
+    V.texts.push({ x: Core.clamp(x, 90, C.W - 90), y, text, color, size: size || 30, life: 1.6, max: 1.6 });
+  }
+
+  function explosion(x, y, big) {
+    emit('flash', x, y, 1, { size: big ? 120 : 80, life: 0.25 });
+    for (let i = 0; i < (big ? 28 : 18); i++) {
+      const a = rand(0, 6.28), sp = rand(60, big ? 320 : 240);
+      emit('fire', x, y, 1, { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, size: rand(3, 7), life: rand(0.25, 0.6), drag: 2 });
+    }
+    for (let i = 0; i < 14; i++) {
+      emit('smoke', x + rand(-14, 14), y + rand(-10, 6), 1, { vx: rand(-40, 40), vy: rand(-70, -20), size: rand(10, 18), life: rand(1.2, 2.2), c: '55,50,48', drag: 1.2, g: -20 });
+    }
+    const woods = ['#6e4124', '#4a2914', '#8a5a33', '#e2b44f'];
+    for (let i = 0; i < 16; i++) {
+      emit('debris', x, y, 1, { vx: rand(-260, 260), vy: rand(-420, -120), g: 760, size: rand(3, 7), life: rand(1.2, 2), c: woods[i % 4], vr: rand(-14, 14) });
+    }
+  }
+  function splash(x, big) {
+    const y = R.waveY(x, V.t);
+    for (let i = 0; i < (big ? 40 : 28); i++) {
+      emit('drop', x + rand(-10, 10), y, 1, { vx: rand(-90, 90), vy: rand(-520, -180), g: 900, size: rand(2, 4.5), life: 1.6 });
+    }
+    emit('ring', x, y + 3, 1, { size: 18, life: 0.9 });
+    emit('ring', x, y + 3, 1, { size: 30, life: 1.3 });
+  }
+  function sandBurst(x, y) {
+    for (let i = 0; i < 30; i++) emit('sand', x, y, 1, { vx: rand(-160, 160), vy: rand(-300, -80), g: 800, size: rand(2, 4), life: rand(0.6, 1.1) });
+    for (let i = 0; i < 6; i++) emit('smoke', x, y, 1, { vx: rand(-30, 30), vy: rand(-40, -10), size: rand(8, 14), life: rand(0.8, 1.3), c: '230,210,170', drag: 1.5 });
+    V.craters.push({ x });
+    if (V.craters.length > 8) V.craters.shift();
+  }
+  function leaves(x, y, n) {
+    const greens = ['#2f8a3c', '#3a9a45', '#4fae55'];
+    for (let i = 0; i < n; i++) emit('leaf', x + rand(-20, 20), y + rand(-10, 10), 1, { vx: rand(-120, 120), vy: rand(-200, -40), g: 260, drag: 1.4, size: rand(4, 8), life: rand(1.5, 2.6), c: greens[i % 3], vr: rand(-6, 6) });
+  }
+  function coins(x, y) {
+    for (let i = 0; i < 26; i++) emit('coin', x, y, 1, { vx: rand(-170, 170), vy: rand(-520, -260), g: 900, size: rand(3.5, 5.5), life: rand(1.8, 2.6), vr: rand(8, 18) });
+  }
+  function hpFlash(side) {
+    const el = $('hp' + side);
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+
+  function handleEvent(e) {
+    const o = G.outcome;
+    const ball = G.exec.balls[e.shot];
+    if (e.type === 'sail') {
+      const sh = V.ships[e.ship];
+      const dir = Core.dirOf(e.ship);
+      sh.holes.push({ x: (e.x - sh.x) * dir, y: e.y - C.SEA_Y, r: rand(5, 8) });
+      if (sh.holes.length > 10) sh.holes.shift();
+      const cloth = e.ship === 0 ? '#f2e6c8' : '#2d2a30';
+      for (let i = 0; i < 6; i++) emit('cloth', e.x, e.y, 1, { vx: rand(-80, 80), vy: rand(-60, 60), g: 200, drag: 1.5, size: rand(3, 5), life: rand(1, 1.6), c: cloth, vr: rand(-8, 8) });
+      if (e.amount) floatText(e.x - dir * 70, e.y - 20, `Velas −${e.amount}`, '#f2e3c2', 22);
+      sfx('rip');
+      setHp(e.ship, e.hpAfter[e.ship]);
+      return;
+    }
+    if (ball) ball.done = true;
+    switch (e.kind) {
+      case 'ship': {
+        const crit = e.part === 'crit';
+        const big = crit || o.powerUsed === 'explosive';
+        explosion(e.x, e.y, big);
+        V.shake = Math.max(V.shake, crit ? 18 : 11);
+        V.flash = crit ? 0.35 : 0.15;
+        const sh = V.ships[e.ship];
+        sh.tiltV += (e.x < sh.x ? 1 : -1) * (crit ? 2.4 : 1.6);
+        const self = e.ship === o.attacker;
+        const label = self ? `¡Fuego amigo! −${e.amount}` : crit ? `¡Crítico! −${e.amount}` : `−${e.amount}`;
+        floatText(e.x, e.y - 40, label, crit ? '#ffd166' : '#ff9a85', crit ? 40 : 34);
+        if (e.ship !== o.attacker) sfx('shipHit', o.attacker);
+        else sfx('crash', crit);
+        setHp(e.ship, e.hpAfter[e.ship]);
+        break;
+      }
+      case 'water': {
+        const big = o.powerUsed === 'explosive';
+        splash(e.x, big);
+        sfx('splash', big);
+        if (e.splash && e.splash.length) {
+          e.splash.forEach((h) => {
+            floatText(V.ships[h.ship].x, C.SEA_Y - 70, `Salpicadura −${h.amount}`, '#bfe6ff', 24);
+            V.ships[h.ship].tiltV += 0.6;
+            setHp(h.ship, e.hpAfter[h.ship]);
+          });
+          V.shake = Math.max(V.shake, 4);
+        } else if (o.shots.length === 1 || e.shot === 1) {
+          floatText(e.x, C.SEA_Y - 40, '¡Agua!', '#bfe6ff', 26);
+        }
+        break;
+      }
+      case 'island':
+        sandBurst(e.x, e.y);
+        sfx('thud');
+        V.shake = Math.max(V.shake, 3);
+        if (o.shots.length === 1) floatText(e.x, e.y - 30, 'A la arena', '#f3dca3', 24);
+        break;
+      case 'tree':
+        leaves(e.x, e.y, 14);
+        sandBurst(e.x, Math.min(e.y, Core.TREE_BASE[1]));
+        V.craters.pop();
+        V.tree.shake = 1;
+        sfx('wood');
+        if (e.felled) {
+          V.tree.hp = 0;
+          sfx('timber');
+          floatText(C.TREE.x + 40, C.TREE.top[1] - 40, '¡Cocotero derribado!', '#9ee08f', 30);
+        } else if (e.treeHp != null && e.treeHp > 0) {
+          V.tree.hp = e.treeHp;
+          floatText(C.TREE.x + 30, C.TREE.top[1] - 40, '¡Al cocotero!', '#9ee08f', 26);
+        }
+        break;
+      case 'chest':
+        if (e.reward) {
+          coins(C.CHEST.x, Core.CHEST_Y - 30);
+          V.chest.available = false;
+          V.chest.cooldown = C.CHEST.cooldown;
+          V.chest.pop = 1;
+          sfx('coins');
+          sfx('powerup');
+          floatText(C.CHEST.x, Core.CHEST_Y - 70, REWARD_TXT[e.reward], '#ffd166', 32);
+          if (e.reward === 'repair') setHp(o.attacker, e.hpAfter[o.attacker]);
+        } else {
+          sandBurst(e.x, e.y);
+          sfx('wood');
+          floatText(C.CHEST.x, Core.CHEST_Y - 60, 'Cofre vacío', '#f3dca3', 24);
+        }
+        break;
+      case 'out':
+        floatText(e.x < 0 ? 120 : C.W - 120, 300, 'Bala perdida', '#bfe6ff', 26);
+        break;
+    }
+  }
+
+  function setHp(side, hp) {
+    V.ships[side].hp = hp;
+    const el = $('hp' + side);
+    el.style.width = hp + '%';
+    el.style.backgroundColor = hp > 55 ? 'var(--hp-good)' : hp > 25 ? 'var(--hp-mid)' : 'var(--hp-low)';
+    $('hpn' + side).textContent = hp;
+    $('hpbar' + side).setAttribute('aria-valuenow', hp);
+    hpFlash(side);
+  }
+
+  // ---------- bucle ----------
+  function update(dt) {
+    V.t += dt;
+    R.update(dt, V.wind);
+
+    for (let i = 0; i < G.timers.length; i++) {
+      const tm = G.timers[i];
+      tm.t -= dt;
+      if (tm.t <= 0) {
+        G.timers.splice(i--, 1);
+        tm.fn();
+      }
+    }
+
+    const ex = G.exec;
+    if (G.phase === 'execMove') {
+      ex.t += dt;
+      const k = ease(Math.min(1, ex.t / 1.1));
+      for (let i = 0; i < 2; i++) {
+        const nx = ex.fromX[i] + (ex.toX[i] - ex.fromX[i]) * k;
+        if (Math.abs(nx - V.ships[i].x) > 0.3 && Math.random() < 0.5) {
+          emit('drop', V.ships[i].x - Math.sign(ex.toX[i] - ex.fromX[i]) * 60, C.SEA_Y + 2, 1, { vx: rand(-30, 30), vy: rand(-60, -20), g: 300, size: 2, life: 0.5 });
+        }
+        V.ships[i].x = nx;
+      }
+      const a = G.outcome.attacker;
+      V.ships[a].cannon = ex.cannonFrom + (G.outcome.angle - ex.cannonFrom) * ease(Math.min(1, ex.t / 1.2));
+      if (ex.t >= 1.35 && !ex.fired) fire();
+    } else if (G.phase === 'execShot') {
+      ex.shotT += dt;
+      const o = G.outcome;
+      for (const b of ex.balls) {
+        if (b.done) continue;
+        const f = ex.shotT * 60;
+        const i0 = Math.min(b.points.length - 1, Math.floor(f));
+        const i1 = Math.min(b.points.length - 1, i0 + 1);
+        const fr = f - Math.floor(f);
+        b.x = b.points[i0][0] + (b.points[i1][0] - b.points[i0][0]) * fr;
+        b.y = b.points[i0][1] + (b.points[i1][1] - b.points[i0][1]) * fr;
+        b.trail += dt;
+        if (b.trail > 0.03) {
+          b.trail = 0;
+          emit('smoke', b.x, b.y, 1, { size: 3.5, life: 0.6, c: '240,240,240', drag: 2, vx: rand(-6, 6), vy: rand(-6, 6) });
+        }
+      }
+      for (let i = 0; i < o.events.length; i++) {
+        const e = o.events[i];
+        if (!ex.done.has(i) && e.t <= ex.shotT) {
+          ex.done.add(i);
+          handleEvent(e);
+        }
+      }
+      if (ex.endAt == null && ex.done.size === o.events.length) ex.endAt = ex.shotT + (o.winner != null ? 0.8 : 1.4);
+      if (ex.endAt != null && ex.shotT >= ex.endAt) {
+        setPhase('settle');
+        finishTurn();
+      }
+    }
+
+    // barcos: oleaje, retroceso, escora y hundimiento
+    for (const sh of V.ships) {
+      sh.tiltV += (-sh.tilt * 38 - sh.tiltV * 5) * dt;
+      sh.tilt += sh.tiltV * dt * 0.1;
+      sh.recoil = Math.max(0, sh.recoil - dt * 30);
+      let y = R.waveY(sh.x, V.t);
+      let rot = Math.atan(R.waveSlope(sh.x, V.t)) * 0.8 + sh.tilt;
+      if (sh.sinking) {
+        sh.sinkT += dt;
+        y += sh.sinkT * sh.sinkT * 18;
+        rot += Core.dirOf(sh.side) * Math.min(0.5, sh.sinkT * 0.22);
+        if (Math.random() < 0.5) emit('drop', sh.x + rand(-50, 50), C.SEA_Y, 1, { vy: rand(-80, -20), g: 200, size: rand(2, 4), life: 0.7 });
+      }
+      sh.y = y;
+      sh.rot = rot;
+      if (G.phase === 'planAttack' && G.ui.controller === sh.side && G.ui.move === 'stay' && G.ui.aim) sh.cannon = G.ui.aim.angle;
+      else if (G.phase !== 'execMove') sh.cannon = sh.cannonRest;
+      sh.smokeT -= dt;
+      if (sh.hp < 60 && sh.smokeT <= 0 && !(sh.sinking && sh.sinkT > 2.5)) {
+        sh.smokeT = sh.hp < 30 ? 0.06 : 0.14;
+        const dir = Core.dirOf(sh.side);
+        const px = sh.x - dir * 20 + rand(-8, 8), py = sh.y - 40;
+        emit('smoke', px, py, 1, { vx: V.wind * 0.6 + rand(-8, 8), vy: rand(-45, -25), size: rand(6, 10), life: rand(1.4, 2.2), c: sh.hp < 30 ? '40,36,34' : '90,86,82', drag: 0.4, g: -6 });
+        if (sh.hp < 30) emit('fire', px, py + 4, 1, { vx: rand(-10, 10), vy: rand(-60, -30), size: rand(2, 4), life: rand(0.2, 0.4) });
+      }
+    }
+    if (V.tree.shake > 0) V.tree.shake = Math.max(0, V.tree.shake - dt * 2.2);
+    if (V.tree.hp <= 0 && V.tree.fall < 1) V.tree.fall = Math.min(1, V.tree.fall + dt * 1.1);
+    if (V.chest.pop > 0) V.chest.pop = Math.max(0, V.chest.pop - dt * 2.5);
+    // durante la animación el estado ya es el del final del turno: el cofre se
+    // actualiza con los eventos, no antes de que llegue la bala
+    if (G.phase !== 'execMove' && G.phase !== 'execShot' && G.phase !== 'settle') {
+      V.chest.available = G.state.chest.available;
+      V.chest.cooldown = G.state.chest.cooldown;
+    }
+
+    // partículas
+    for (let i = V.parts.length - 1; i >= 0; i--) {
+      const p = V.parts[i];
+      p.life -= dt;
+      if (p.life <= 0) { V.parts.splice(i, 1); continue; }
+      p.vy += p.g * dt;
+      if (p.drag) { const f = Math.max(0, 1 - p.drag * dt); p.vx *= f; p.vy *= f; }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      if (p.kind === 'drop' && p.vy > 0 && p.y > C.SEA_Y + 4) { V.parts.splice(i, 1); continue; }
+      if ((p.kind === 'debris' || p.kind === 'leaf' || p.kind === 'cloth') && p.y > C.SEA_Y + 2) {
+        p.y = C.SEA_Y + 2; p.vy = 0; p.g = 0; p.vx *= 0.5; p.vr *= 0.3;
+      }
+      if (p.kind === 'coin' || p.kind === 'sand' || p.kind === 'leaf') {
+        const gy = Core.groundY(p.x) - 2;
+        if (p.vy > 0 && p.y > gy) { p.y = gy; p.vy *= -0.3; p.vx *= 0.5; }
+      }
+    }
+    for (let i = V.texts.length - 1; i >= 0; i--) {
+      V.texts[i].life -= dt;
+      if (V.texts[i].life <= 0) V.texts.splice(i, 1);
+    }
+    V.shake = Math.max(0, V.shake - dt * 40);
+    V.flash = Math.max(0, V.flash - dt * 1.5);
+  }
+
+  function draw() {
+    ctx.setTransform(G.scale, 0, 0, G.scale, 0, 0);
+    ctx.save();
+    if (V.shake > 0) ctx.translate(rand(-V.shake, V.shake), rand(-V.shake, V.shake) * 0.6);
+    R.drawBackground(ctx, V.t);
+    R.drawIsland(ctx, V.t, V);
+    R.drawTree(ctx, V.t, V.tree, V.wind);
+    R.drawChest(ctx, V.t, V.chest);
+
+    const planning = (G.phase === 'planAttack' || G.phase === 'planDefend') && G.ui.controller >= 0;
+    let aimX = null;
+    if (planning) {
+      const side = G.ui.controller;
+      const lane = G.state.ships[side].lane;
+      const nl = Core.laneAfter(lane, G.ui.move);
+      aimX = Core.shipX(side, nl);
+      if (nl !== lane) {
+        R.drawShip(ctx, {
+          side, x: aimX, y: R.waveY(aimX, V.t), rot: 0, hp: V.ships[side].hp, holes: V.ships[side].holes, ghost: true,
+          cannon: G.phase === 'planAttack' && G.ui.aim ? G.ui.aim.angle : V.ships[side].cannonRest,
+        }, V.t, V.wind);
+      }
+    }
+    for (const sh of V.ships) R.drawShip(ctx, sh, V.t, V.wind);
+    R.drawWaterFront(ctx, V.t);
+    if (planning) {
+      const side = G.ui.controller;
+      const lane = G.state.ships[side].lane;
+      R.drawLanes(ctx, V.t, side, lane, Core.laneAfter(lane, G.ui.move), ACCENT[side]);
+    }
+    R.drawParticles(ctx, V.parts);
+    if (G.phase === 'execShot') for (const b of G.exec.balls) if (!b.done) R.drawBall(ctx, b.x, b.y);
+
+    if (planning && G.phase === 'planAttack') {
+      const side = G.ui.controller;
+      if (G.ui.aim) R.drawAim(ctx, V.t, side, aimX, G.ui.aim, ACCENT[side]);
+      else drawAimHint(side, aimX);
+      if (G.ui.drag && G.ui.drag.active) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(G.ui.drag.x0, G.ui.drag.y0);
+        ctx.lineTo(G.ui.drag.x, G.ui.drag.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.beginPath();
+        ctx.arc(G.ui.drag.x0, G.ui.drag.y0, 6, 0, 6.283);
+        ctx.fill();
+      }
+    }
+    R.drawTexts(ctx, V.texts);
+    ctx.restore();
+    if (V.flash > 0) {
+      ctx.fillStyle = `rgba(255,245,220,${V.flash})`;
+      ctx.fillRect(0, 0, C.W, C.H);
+    }
+  }
+
+  function drawAimHint(side, x) {
+    const dir = Core.dirOf(side);
+    const piv = Core.cannonPivot(side, x);
+    const k = (V.t * 0.8) % 1;
+    const sx = piv[0] + dir * 20, sy = piv[1] - 60;
+    const ex = sx - dir * 90 * ease(k), ey = sy + 60 * ease(k);
+    ctx.globalAlpha = 1 - k * 0.6;
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(ex, ey, 9, 0, 6.283);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.font = '22px "Pirata One", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(25,15,8,0.8)';
+    ctx.strokeText('Arrastra hacia atrás', piv[0] - dir * 10, piv[1] - 210);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Arrastra hacia atrás', piv[0] - dir * 10, piv[1] - 210);
+  }
+
+  let last = 0;
+  function frame(now) {
+    const real = Math.min(0.05, (now - (last || now)) / 1000);
+    last = now;
+    if (!G.paused) {
+      const steps = Math.max(1, Math.round(G.speed));
+      const dt = (real * G.speed) / steps;
+      for (let i = 0; i < steps; i++) update(dt);
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- marcador y paneles ----------
+  function updateHud() {
+    const s = G.state;
+    if (!s) return;
+    $('turnN').textContent = `Turno ${s.turn}`;
+    $('windTxt').textContent = windText(s.wind);
+    const k = Core.windKnots(s.wind);
+    const arrow = $('windArrow');
+    arrow.style.transform = `scaleX(${s.wind < 0 ? -1 : 1})`;
+    arrow.style.opacity = k ? 0.4 + (k / C.WIND_STEPS) * 0.6 : 0.15;
+    for (let i = 0; i < 2; i++) {
+      $('cap' + i).classList.toggle('is-attacker', s.winner == null && s.attacker === i && !G.attract);
+      $('tag' + i).textContent = G.cpu[i] ? `CPU · ${Core.LEVELS[levelFor(i)].name}` : G.mode === 'pvp' ? `Jugador ${i + 1}` : 'Tú';
+      const p = s.ships[i].power;
+      $('pow' + i).hidden = !p;
+      $('pow' + i).textContent = p ? `Cargado: ${POWER_TXT[p]}` : '';
+      if (G.phase !== 'execShot') {
+        const hp = s.ships[i].hp;
+        if (V.ships[i] && V.ships[i].hp !== hp) setHp(i, hp);
+        else {
+          $('hp' + i).style.width = hp + '%';
+          $('hp' + i).style.backgroundColor = hp > 55 ? 'var(--hp-good)' : hp > 25 ? 'var(--hp-mid)' : 'var(--hp-low)';
+          $('hpn' + i).textContent = hp;
+        }
+      }
+    }
+  }
+
+  function showPanel(role, side) {
+    const p = $('panel');
+    p.hidden = false;
+    $('panelWho').textContent = NAMES[side];
+    $('panelWho').style.color = ACCENT[side];
+    $('panelRole').textContent = role === 'attack' ? 'Atacas' : 'Defiendes';
+    const foe = NAMES[1 - side];
+    let msg;
+    if (role === 'attack') {
+      msg = 'Elige maniobra y arrastra hacia atrás desde cualquier punto para apuntar. La guía no cuenta el viento.';
+      if (G.state.ships[side].power) msg = `Tienes ${POWER_TXT[G.state.ships[side].power].toLowerCase()} cargada para este disparo. ` + msg;
+    } else {
+      msg = G.cpu[1 - side]
+        ? `El ${foe} ya ha apuntado en secreto. ¿Esquivas o te quedas donde estás?`
+        : `El ${foe} ya ha apuntado. ¿Esquivas o te quedas donde estás?`;
+    }
+    const m = $('panelMsg');
+    m.classList.remove('nudge');
+    m.textContent = msg;
+    const go = $('btnGo');
+    go.textContent = role === 'attack' ? '¡Fuego!' : 'Confirmar maniobra';
+    go.classList.toggle('is-calm', role !== 'attack');
+    $('aimRead').hidden = role !== 'attack';
+    refreshPanel();
+  }
+  function refreshPanel() {
+    const side = G.ui.controller;
+    if (side < 0) return;
+    const lane = G.state.ships[side].lane;
+    const valid = Core.validMoves(lane);
+    document.querySelectorAll('.mv').forEach((b) => {
+      const m = b.dataset.move;
+      b.disabled = !valid.includes(m);
+      b.setAttribute('aria-pressed', String(G.ui.move === m));
+    });
+    const a = G.ui.aim;
+    $('aimRead').innerHTML = a
+      ? `Ángulo <b>${Math.round(a.angle)}°</b> · Potencia <b>${Math.round(a.power * 100)}%</b>`
+      : 'Sin apuntar';
+  }
+  function hidePanel() { $('panel').hidden = true; }
+
+  function setMove(m) {
+    if (G.phase !== 'planAttack' && G.phase !== 'planDefend') return;
+    const side = G.ui.controller;
+    if (side < 0 || !Core.validMoves(G.state.ships[side].lane).includes(m)) return;
+    if (G.ui.move !== m) S.click();
+    G.ui.move = m;
+    refreshPanel();
+  }
+
+  function showBanner(t, s, w) {
+    if (G.attract) return;
+    $('bannerT').textContent = t;
+    $('bannerS').textContent = s;
+    $('bannerW').textContent = w || '';
+    const b = $('banner');
+    b.hidden = true;
+    void b.offsetWidth;
+    b.hidden = false;
+  }
+  function hideBanner() { $('banner').hidden = true; }
+
+  // ---------- pantallas ----------
+  function showOverlay(id) {
+    ['ovMenu', 'ovHandoff', 'ovOver', 'ovPause', 'ovHelp'].forEach((o) => { $(o).hidden = o !== id; });
+    G.overlay = id;
+    if (id) {
+      const btn = $(id).querySelector('.btn.primary');
+      if (btn) setTimeout(() => btn.focus({ preventScroll: true }), 30);
+    }
+  }
+
+  function handoff(side, role, cb) {
+    setPhase('handoff');
+    $('hoTitle').textContent = `Turno del ${NAMES[side]}`;
+    $('hoTitle').style.color = side === 0 ? '#9b2f20' : '#2a1c11';
+    $('hoText').textContent = role === 'attack'
+      ? `Vas a atacar. Que el ${NAMES[1 - side]} no mire la pantalla mientras apuntas.`
+      : `Vas a decidir tu maniobra en secreto. Que el ${NAMES[1 - side]} no mire la pantalla.`;
+    G.handoffCb = cb;
+    showOverlay('ovHandoff');
+  }
+
+  function showGameOver() {
+    if (G.attract) { after(1.5, () => newMatch('demo')); return; }
+    const s = G.state;
+    const w = s.winner;
+    setPhase('over');
+    const humanWon = isHuman(w);
+    $('overTitle').textContent = G.mode === 'cpu' ? (humanWon ? '¡Victoria!' : 'Hundido...') : `¡Gana el ${NAMES[w]}!`;
+    $('overSub').textContent = G.mode === 'cpu'
+      ? (humanWon ? `Has mandado al ${NAMES[1]} al fondo del mar en ${s.turn} turnos.` : `El ${NAMES[1]} (${Core.LEVELS[G.level].name}) te ha hundido en ${s.turn} turnos.`)
+      : `El ${NAMES[1 - w]} se va a pique en el turno ${s.turn}.`;
+    const st = s.stats;
+    const pct = (x) => (x.shots ? Math.round((x.hits / x.shots) * 100) + '%' : '—');
+    const rows = [
+      ['Disparos', st[0].shots, st[1].shots],
+      ['Impactos al casco', st[0].hits, st[1].hits],
+      ['Puntería', pct(st[0]), pct(st[1])],
+      ['Críticos', st[0].crits, st[1].crits],
+      ['Daño causado', st[0].damage, st[1].damage],
+      ['Cofres abiertos', st[0].chests, st[1].chests],
+      ['Casco final', s.ships[0].hp, s.ships[1].hp],
+    ];
+    $('statsTable').innerHTML =
+      `<thead><tr><td></td><th style="color:#9b2f20">${w === 0 ? '<span class="trophy">★ </span>' : ''}Rojo</th><th>${w === 1 ? '<span class="trophy">★ </span>' : ''}Negro</th></tr></thead><tbody>` +
+      rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('') + '</tbody>';
+    sfx(G.mode === 'pvp' || humanWon ? 'fanfare' : 'lament');
+    showOverlay('ovOver');
+  }
+
+  function describe(o) {
+    const parts = [];
+    const ballEvents = o.events.filter((e) => e.type === 'impact');
+    for (const e of ballEvents) {
+      if (e.kind === 'ship') {
+        if (e.ship === o.attacker) parts.push(`fuego amigo (−${e.amount})`);
+        else parts.push(e.part === 'crit' ? `¡crítico! (−${e.amount})` : `impacto en el casco (−${e.amount})`);
+      } else if (e.kind === 'water') {
+        const sp = (e.splash || []).filter((h) => h.ship !== o.attacker);
+        parts.push(sp.length ? `agua, salpicadura (−${sp[0].amount})` : 'agua');
+      } else if (e.kind === 'tree') parts.push(e.felled ? 'derribó el cocotero' : 'dio al cocotero');
+      else if (e.kind === 'chest') parts.push(e.reward ? `abrió el cofre: ${REWARD_TXT[e.reward].toLowerCase()}` : 'cofre vacío');
+      else if (e.kind === 'island') parts.push('a la arena');
+      else parts.push('bala perdida');
+    }
+    const sails = o.events.filter((e) => e.type === 'sail' && e.ship !== o.attacker).length;
+    if (sails && !parts.some((p) => p.includes('casco') || p.includes('crítico'))) parts.push('velas rasgadas');
+    const mv = (i) => (o.moves[i] === 'stay' ? 'se quedó quieto' : o.moves[i] === 'left' ? 'fue a la izquierda' : 'fue a la derecha');
+    return {
+      head: `${NAMES[o.attacker]} disparó a ${Math.round(o.angle)}° y ${Math.round(o.power * 100)}%${o.powerUsed ? ' (' + POWER_TXT[o.powerUsed].toLowerCase() + ')' : ''}; el ${NAMES[o.defender]} ${mv(o.defender)}.`,
+      result: parts.join(' · '),
+    };
+  }
+  function addLog(o) {
+    const d = describe(o);
+    G.log.unshift({ turn: o.turn, head: d.head, result: d.result });
+    renderLog();
+  }
+  function renderLog() {
+    const el = $('logList');
+    el.innerHTML = G.log.length
+      ? G.log.map((l) => `<li><b>Turno ${l.turn}.</b> ${l.head} <i>${l.result}.</i></li>`).join('')
+      : '<li class="empty">Aún no ha habido disparos.</li>';
+  }
+
+  // ---------- entrada ----------
+  function toWorld(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) * C.W) / r.width, y: ((e.clientY - r.top) * C.H) / r.height };
+  }
+  function canAim() { return G.phase === 'planAttack' && G.ui.controller >= 0 && isHuman(G.ui.controller) && !G.paused; }
+
+  // El arrastre se mide en píxeles de pantalla: la distancia para potencia
+  // máxima se adapta al tamaño del escenario sin bajar de 120 px de dedo.
+  function aimFromDrag(d) {
+    const dx = d.cx0 - d.cx, dy = d.cy0 - d.cy;
+    const len = Math.hypot(dx, dy);
+    if (len < 8) return null;
+    const u = cv.getBoundingClientRect().width / C.W;
+    const full = Math.max(120, 230 * u);
+    const dir = Core.dirOf(G.ui.controller);
+    let ang = (Math.atan2(-dy, dx * dir) * 180) / Math.PI;
+    if (ang > 90 || ang < -90) ang = C.ANGLE_MAX;
+    ang = Core.clamp(ang, C.ANGLE_MIN, C.ANGLE_MAX);
+    return { angle: ang, power: Core.clamp(len / full, 0, 1) };
+  }
+
+  // Se puede apuntar arrastrando en cualquier zona libre de la pantalla, no solo
+  // sobre el escenario: en un móvil en vertical el escenario es pequeño.
+  const aimSurface = $('app');
+  const isControl = (el) => el && el.closest && el.closest('button, .panel, .log, .overlay, .hud-top');
+  aimSurface.addEventListener('pointerdown', (e) => {
+    S.unlock();
+    if (!canAim() || isControl(e.target)) return;
+    const p = toWorld(e);
+    G.ui.drag = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y, cx0: e.clientX, cy0: e.clientY, cx: e.clientX, cy: e.clientY, active: true };
+    try { aimSurface.setPointerCapture(e.pointerId); } catch (err) { /* sin captura */ }
+    e.preventDefault();
+  });
+  aimSurface.addEventListener('pointermove', (e) => {
+    const d = G.ui.drag;
+    if (!d || d.id !== e.pointerId || !canAim()) return;
+    const p = toWorld(e);
+    d.x = p.x;
+    d.y = p.y;
+    d.cx = e.clientX;
+    d.cy = e.clientY;
+    const a = aimFromDrag(d);
+    if (a) {
+      const prev = G.ui.aim;
+      G.ui.aim = a;
+      if (!prev || Math.round(prev.angle) !== Math.round(a.angle) || Math.round(prev.power * 50) !== Math.round(a.power * 50)) {
+        const now = performance.now();
+        if (now - G.ui.lastTick > 45) { S.aim(); G.ui.lastTick = now; }
+      }
+      refreshPanel();
+    }
+  });
+  function endDrag(e) {
+    const d = G.ui.drag;
+    if (!d || d.id !== e.pointerId) return;
+    G.ui.drag = null;
+  }
+  aimSurface.addEventListener('pointerup', endDrag);
+  aimSurface.addEventListener('pointercancel', endDrag);
+
+  document.querySelectorAll('.mv').forEach((b) => b.addEventListener('click', () => setMove(b.dataset.move)));
+  $('btnGo').addEventListener('click', confirmPlan);
+
+  function adjustAim(dAngle, dPower) {
+    if (!canAim()) return;
+    const a = G.ui.aim || { angle: 45, power: 0.6 };
+    G.ui.aim = { angle: Core.clamp(a.angle + dAngle, C.ANGLE_MIN, C.ANGLE_MAX), power: Core.clamp(a.power + dPower, 0, 1) };
+    S.aim();
+    refreshPanel();
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') return;
+    const k = e.key;
+    if (k === 'm' || k === 'M') { toggleMute(); return; }
+    if (G.overlay) {
+      if (k === 'Escape' && G.overlay === 'ovPause') { resume(); e.preventDefault(); }
+      else if (k === 'Escape' && G.overlay === 'ovHelp') { closeHelp(); e.preventDefault(); }
+      return;
+    }
+    if (k === 'Escape') { pause(); e.preventDefault(); return; }
+    if (k === 'b' || k === 'B') { toggleLog(); return; }
+    const planning = (G.phase === 'planAttack' || G.phase === 'planDefend') && G.ui.controller >= 0;
+    if (!planning) return;
+    const big = e.shiftKey ? 5 : 1;
+    switch (k) {
+      case 'ArrowLeft': case 'a': case 'A': setMove('left'); break;
+      case 'ArrowRight': case 'd': case 'D': setMove('right'); break;
+      case 's': case 'S': setMove('stay'); break;
+      case 'ArrowUp': adjustAim(big, 0); break;
+      case 'ArrowDown': adjustAim(-big, 0); break;
+      case 'e': case 'E': case '+': case '=': case 'PageUp': adjustAim(0, 0.02 * big); break;
+      case 'q': case 'Q': case '-': case 'PageDown': adjustAim(0, -0.02 * big); break;
+      case 'Enter': case ' ':
+        // un botón con foco ya responde a Intro/Espacio por sí mismo, salvo los
+        // de maniobra: tras elegir una con el ratón, Intro confirma
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON' && !document.activeElement.classList.contains('mv')) return;
+        confirmPlan();
+        break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+
+  // ---------- menú y controles ----------
+  function setLevel(l) {
+    G.level = l;
+    store.set('level', l);
+    document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === l)));
+    $('levelNote').textContent = LEVEL_NOTE[l];
+  }
+  document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { S.unlock(); S.click(); setLevel(b.dataset.level); }));
+
+  function startGame(mode) {
+    S.setMusic('battle');
+    S.unlock();
+    S.select();
+    showOverlay(null);
+    newMatch(mode);
+  }
+  $('btnCpu').addEventListener('click', () => startGame('cpu'));
+  $('btnPvp').addEventListener('click', () => startGame('pvp'));
+  $('btnReady').addEventListener('click', () => { S.unlock(); S.click(); showOverlay(null); const cb = G.handoffCb; G.handoffCb = null; if (cb) cb(); });
+  $('btnRematch').addEventListener('click', () => { S.select(); G.nextFirst = 1 - G.firstOfMatch; showOverlay(null); newMatch(G.mode); });
+  $('btnToMenu').addEventListener('click', toMenu);
+  $('btnQuit').addEventListener('click', toMenu);
+  $('btnRestart').addEventListener('click', () => { S.click(); showOverlay(null); newMatch(G.mode); });
+  $('btnResume').addEventListener('click', resume);
+  $('btnPause').addEventListener('click', pause);
+  $('btnLog').addEventListener('click', toggleLog);
+  $('btnMute').addEventListener('click', toggleMute);
+  $('btnHelp').addEventListener('click', () => openHelp('ovMenu'));
+  $('btnHelp2').addEventListener('click', () => openHelp('ovPause'));
+  $('btnHelpClose').addEventListener('click', closeHelp);
+
+  function openHelp(from) { S.unlock(); S.click(); G.helpFrom = from; showOverlay('ovHelp'); }
+  function closeHelp() { S.click(); showOverlay(G.helpFrom || null); }
+  function toMenu() {
+    S.click();
+    hidePanel();
+    hideBanner();
+    newMatch('demo');
+    showOverlay('ovMenu');
+  }
+  function pause() {
+    if (G.attract || G.phase === 'over') return;
+    S.click();
+    S.setMusicPaused(true);
+    G.paused = true;
+    G.ui.drag = null;
+    showOverlay('ovPause');
+  }
+  function resume() {
+    S.click();
+    S.setMusicPaused(false);
+    G.paused = false;
+    // si la pausa interrumpió un relevo, se vuelve a esa pantalla
+    showOverlay(G.phase === 'handoff' ? 'ovHandoff' : null);
+  }
+  function toggleLog() { S.click(); $('log').hidden = !$('log').hidden; }
+  function toggleMute() {
+    const m = !S.isMuted();
+    S.setMuted(m);
+    store.set('muted', m);
+    renderMute();
+  }
+  function renderMute() {
+    const m = S.isMuted();
+    $('icoSound').innerHTML = m
+      ? '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>'
+      : '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>';
+    $('btnMute').setAttribute('aria-label', m ? 'Activar sonido' : 'Silenciar sonido');
+  }
+
+  // ---------- tamaño ----------
+  function fit() {
+    const app = $('app');
+    document.body.classList.toggle('is-tall', window.innerWidth < window.innerHeight && window.innerWidth < 720);
+    const cs = getComputedStyle(app);
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const note = document.querySelector('.rotate-note');
+    const noteH = note && getComputedStyle(note).display !== 'none' ? note.offsetHeight + 10 : 0;
+    const aw = app.clientWidth - padX, ah = app.clientHeight - padY - noteH;
+    const scale = Math.max(0.1, Math.min(aw / C.W, ah / C.H));
+    const w = Math.floor(C.W * scale), h = Math.floor(C.H * scale);
+    const stage = $('stage');
+    stage.style.width = w + 'px';
+    stage.style.height = h + 'px';
+    stage.style.setProperty('--u', (w / C.W).toFixed(4));
+    stage.classList.toggle('is-compact', w < 900);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    G.scale = cv.width / C.W;
+  }
+  window.addEventListener('resize', fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe($('app'));
+
+  // ---------- arranque ----------
+  S.setMuted(store.get('muted', false));
+  renderMute();
+  setLevel(G.level in Core.LEVELS ? G.level : 'normal');
+  R.init();
+  fit();
+  newMatch('demo');
+  showOverlay('ovMenu');
+  requestAnimationFrame(frame);
+  if (document.fonts && document.fonts.load) document.fonts.load('30px "Pirata One"').catch(() => {});
+
+  // Gancho de pruebas: permite a los tests guiar una partida.
+  window.__isla = {
+    G, V, Core,
+    start(mode, opts) { showOverlay(null); newMatch(mode, opts); },
+    setAim(angle, power) { if (canAim()) { G.ui.aim = { angle, power }; refreshPanel(); } },
+    setMove, confirm: confirmPlan,
+    // avanza el juego `sec` segundos sin depender de requestAnimationFrame
+    advance(sec) { for (let t = 0; t < sec; t += 1 / 60) update(1 / 60); draw(); return G.phase; },
+    ready() { $('btnReady').click(); },
+  };
+})();
+
+</script>
+
+</body></html>
