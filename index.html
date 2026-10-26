@@ -852,7 +852,11 @@ kbd { font-family: inherit; font-size: 0.85em; padding: 0.05em 0.4em; border-rad
   let ctx = null, master = null, sfxBus = null, noiseBuf = null, ambience = null;
   let music = null, musicName = null, musicPaused = false;
   let muted = false;
-  const musicTracks = { menu: 'pirates-menu.wav', battle: 'pirates-battle.wav' };
+  const musicTracks = {
+    menu: 'pirates-menu.wav',
+    battle: 'pirates-battle.wav',
+    results: 'results-pirate-shanty.wav',
+  };
   const cannonAudio = new Audio('cannon-shot.wav');
   cannonAudio.preload = 'auto';
   const soundEffects = {
@@ -2598,6 +2602,7 @@ kbd { font-family: inherit; font-size: 0.85em; padding: 0.05em 0.4em; border-rad
 
   function showGameOver() {
     if (G.attract) { after(1.5, () => newMatch('demo')); return; }
+    S.setMusic('results');
     const s = G.state;
     const w = s.winner;
     setPhase('over');
